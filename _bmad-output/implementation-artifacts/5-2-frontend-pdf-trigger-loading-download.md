@@ -1,6 +1,6 @@
 # Story 5.2: Frontend - PDF trigger, loading state, and download
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -27,12 +27,12 @@ Afin de confirmer que la generation s'est bien terminee.
 
 ## Tasks / Subtasks
 
-- [ ] Ajouter action "Generer PDF" sur detail facture
-- [ ] Gerer etat loading/disabled + libelle FR
-- [ ] Implementer telechargement fiable (blob/url) apres succes
-- [ ] Gerer erreurs API avec feedback FR et bouton retry
-- [ ] Ajouter region `aria-live` pour annonce de resultat
-- [ ] Tester flux success/failure/retentative
+- [x] Ajouter action "Generer PDF" sur detail facture
+- [x] Gerer etat loading/disabled + libelle FR
+- [x] Implementer telechargement fiable (blob/url) apres succes
+- [x] Gerer erreurs API avec feedback FR et bouton retry
+- [x] Ajouter region `aria-live` pour annonce de resultat
+- [x] Tester flux success/failure/retentative
 
 ## Dev Notes
 
@@ -54,7 +54,7 @@ Afin de confirmer que la generation s'est bien terminee.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 5)
 
 ### Debug Log References
 
@@ -62,8 +62,19 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour trigger/generation/telechargement PDF.
+- Client `GET /api/v1/pdf/invoices/:id` (Bearer), blob + lien telechargement `facture-{numero}.pdf`.
+- Bouton `variant="outline"` pour rester secondaire par rapport aux actions de statut (UX-DR14).
+- Zone `aria-live="polite"` + focus pour annonce succes/echec (UX-DR13).
+- Commit: `feat(#13): Add invoice PDF download with loading, aria-live, and retry`.
 
 ### File List
 
+- `frontend/src/lib/api/pdf-api.ts`
+- `frontend/src/modules/invoices/components/invoice-pdf-actions.tsx`
+- `frontend/src/modules/invoices/components/invoice-pdf-actions.test.tsx`
+- `frontend/src/modules/invoices/components/invoice-detail-view.tsx`
 - `_bmad-output/implementation-artifacts/5-2-frontend-pdf-trigger-loading-download.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 5.2 (branche `feature/epic-5-invoice-pdf`).
