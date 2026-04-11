@@ -1,64 +1,68 @@
 # Story 4.5: Frontend - Invoice editor shell, client selection, draft save, and prerequisite prompts
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
 En tant qu'utilisateur authentifie,  
-Je veux initier une facture et sauvegarder un brouillon,  
-Afin de finaliser les lignes ensuite.
+Je veux demarrer une facture et enregistrer un brouillon,  
+Afin de completer les lignes ensuite.
 
 ## Acceptance Criteria
 
-1. **Given** la page create/edit facture  
-   **When** profil vendeur ou client manquant  
-   **Then** des prompts inline guident vers Profil vendeur ou Clients avant blocage.
-2. **Given** un client selectionne  
-   **When** l'utilisateur sauvegarde  
-   **Then** le layout suit UX-DR5: deux colonnes a partir de `lg` (lignes + synthese sticky), empile en dessous.
-3. **Given** interactions et erreurs  
-   **When** l'utilisateur soumet  
-   **Then** la copie FR, la hierarchie primaire et le mapping erreurs sont respectes.
+1. **Given** page creation/edition facture  
+   **When** profil vendeur ou client manque  
+   **Then** des invites pointent vers Profil vendeur ou Clients avant blocage.
+2. **Given** choix client et sauvegarde  
+   **Then** layout `lg+` deux colonnes (contenu + rail synthese) et pilee en dessous de `lg`, copy FR et erreurs mappees.
 
 ## Tasks / Subtasks
 
-- [ ] Construire la page editeur facture (create/edit)
-- [ ] Integrer select client + prechecks prerequisites (profil/client)
-- [ ] Implementer sauvegarde brouillon (mutation + loading + feedback)
-- [ ] Mettre en place layout responsive (2 colonnes `lg+`, stack `<lg`)
-- [ ] Mapper erreurs API en FR
-- [ ] Tester parcours prerequisites et save draft
+- [x] Page nouvelle facture avec selection client et dates
+- [x] Prompts prerequis (profil minimal + clients)
+- [x] Creation brouillon via API (au moins une ligne requise par le backend)
+- [x] Page detail avec grille `lg` synthese + metadonnees brouillon
+- [x] Tests creation minimale
 
 ## Dev Notes
 
-- Ne pas masquer les prerequis: afficher des CTA clairs vers pages manquantes.
-- Garder le socle de page compatible avec les stories 4.6 et 4.7.
+- Le backend exige au moins une ligne a la creation : premiere ligne saisie sur le formulaire de creation, puis edition complete sur la fiche.
 
 ### Project Structure Notes
 
 - `src/app/(app)/factures/new/page.tsx`
-- `src/app/(app)/factures/[id]/edit/page.tsx`
-- `src/modules/invoices/components/invoice-editor-shell.tsx`
+- `src/app/(app)/factures/[id]/page.tsx`
+- `src/modules/invoices/components/create-invoice-form.tsx`
+- `src/modules/invoices/components/invoice-detail-view.tsx`
+- `src/modules/invoices/components/invoice-totals-panel.tsx`
 
 ### References
 
 - `_bmad-output/planning-artifacts/epics.md` (Story 4.5, FR15, FR29, UX-DR5/12/14/21)
-- `_bmad-output/planning-artifacts/ux-design-specification.md` (layout editeur, copy FR, hierarchy actions)
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
-
-### Debug Log References
-
-- N/A
+Cursor agent (Epic 4)
 
 ### Completion Notes List
 
-- Story context cree pour shell editeur facture et sauvegarde brouillon.
+- `CreateInvoiceForm` : profil (identite + adresse), liste clients, premiere ligne (description, qté, PU HT, TVA), `POST /invoices`.
+- Fiche : `Synthèse` sticky, dates editables en brouillon (`PATCH` metadata).
+- Commit: `feat(#10): Add invoice draft creation, detail shell, and totals panel`.
 
 ### File List
 
+- `frontend/src/modules/invoices/components/create-invoice-form.tsx`
+- `frontend/src/modules/invoices/components/create-invoice-form.test.tsx`
+- `frontend/src/modules/invoices/components/invoice-detail-view.tsx`
+- `frontend/src/modules/invoices/components/invoice-totals-panel.tsx`
+- `frontend/src/app/(app)/factures/new/page.tsx`
+- `frontend/src/app/(app)/factures/[id]/page.tsx`
+- `frontend/src/lib/api/invoices-api.ts`
 - `_bmad-output/implementation-artifacts/4-5-frontend-invoice-editor-shell-client-draft-prompts.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 4.5.

@@ -1,6 +1,6 @@
 # Story 4.4: Frontend - Invoice list, empty state, and navigation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,11 +19,11 @@ Afin de retrouver rapidement les documents.
 
 ## Tasks / Subtasks
 
-- [ ] Implementer page liste factures
-- [ ] Gerer etat vide via `ResourceEmptyState`
-- [ ] Ajouter tri basique date/statut
-- [ ] Ajouter deep links vers detail facture
-- [ ] Tester navigation, tri et etat vide
+- [x] Implementer page liste factures
+- [x] Gerer etat vide via `ResourceEmptyState`
+- [x] Ajouter tri basique date/statut
+- [x] Ajouter deep links vers detail facture
+- [x] Tester navigation, tri et etat vide
 
 ## Dev Notes
 
@@ -33,7 +33,7 @@ Afin de retrouver rapidement les documents.
 ### Project Structure Notes
 
 - `src/app/(app)/factures/page.tsx`
-- `src/modules/invoices/components/invoice-list.tsx`
+- `src/modules/invoices/components/invoices-list.tsx`
 
 ### References
 
@@ -44,7 +44,7 @@ Afin de retrouver rapidement les documents.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 4)
 
 ### Debug Log References
 
@@ -52,8 +52,18 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour liste factures et navigation detail.
+- `GET /api/v1/invoices`, tri client (date d'emission / statut), liens vers `/factures/[id]`, badge statut avec libelle FR, colonne TTC avec `MoneyDisplay`.
+- Commit: `feat(#9): Add invoice list, empty state, sort, and navigation`.
 
 ### File List
 
+- `frontend/src/lib/api/invoices-api.ts`
+- `frontend/src/modules/invoices/utils/invoice-i18n.ts`
+- `frontend/src/modules/invoices/components/invoices-list.tsx`
+- `frontend/src/modules/invoices/components/invoices-list.test.tsx`
+- `frontend/src/app/(app)/factures/page.tsx`
 - `_bmad-output/implementation-artifacts/4-4-frontend-invoice-list-empty-state-navigation.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 4.4 (branche `feature/epic-4-invoices`).
