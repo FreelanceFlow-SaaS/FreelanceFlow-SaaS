@@ -1,6 +1,6 @@
 # Story 1.6: Frontend - Authenticated shell, navigation, profile page, and sign out
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -25,21 +25,21 @@ Afin de naviguer clairement vers les flux de facturation.
 
 ## Tasks / Subtasks
 
-- [ ] Construire le layout authentifie
-  - [ ] Implementer `src/app/(app)/layout.tsx` avec sidebar persistante
-  - [ ] Ajouter navigation vers Factures, Clients, Prestations, Profil vendeur
-  - [ ] Gerer etat actif de route et accessibilite (`nav`, `main`, tailles de cibles)
-- [ ] Integrer le profil vendeur
-  - [ ] Ajouter page `src/app/(app)/profil-vendeur/page.tsx`
-  - [ ] Connecter `GET/PATCH` profil et mapping des erreurs FR
-- [ ] Integrer la deconnexion
-  - [ ] Ajouter action sign out dans shell (menu compte ou bouton)
-  - [ ] Nettoyer jetons/session et rediriger vers login
-- [ ] Stabiliser ThemeSwitcher
-  - [ ] Verifier absence de reset du state formulaire sur changement de theme
-- [ ] Tester les parcours critiques
-  - [ ] Navigation et protection de routes
-  - [ ] Profil vendeur et deconnexion
+- [x] Construire le layout authentifie
+  - [x] Implementer `src/app/(app)/layout.tsx` avec sidebar persistante
+  - [x] Ajouter navigation vers Factures, Clients, Prestations, Profil vendeur
+  - [x] Gerer etat actif de route et accessibilite (`nav`, `main`, tailles de cibles)
+- [x] Integrer le profil vendeur
+  - [x] Ajouter page `src/app/(app)/profil-vendeur/page.tsx`
+  - [x] Connecter `GET/PATCH` profil et mapping des erreurs FR
+- [x] Integrer la deconnexion
+  - [x] Ajouter action sign out dans shell (menu compte ou bouton)
+  - [x] Nettoyer jetons/session et rediriger vers login
+- [x] Stabiliser ThemeSwitcher
+  - [x] Verifier absence de reset du state formulaire sur changement de theme
+- [x] Tester les parcours critiques
+  - [x] Navigation et protection de routes
+  - [x] Profil vendeur et deconnexion
 
 ## Dev Notes
 
@@ -51,8 +51,9 @@ Afin de naviguer clairement vers les flux de facturation.
 
 - `src/app/(app)/layout.tsx`
 - `src/app/(app)/profil-vendeur/page.tsx`
-- `src/components/navigation/*`
-- `src/components/theme-switcher/*`
+- `src/components/layout/app-shell.tsx` (sidebar + ThemeSwitcher header + deconnexion)
+- `src/middleware.ts` (protection cookie `ff_access_token`)
+- `src/lib/api/profile-api.ts`
 - `src/lib/auth/*`
 
 ### References
@@ -65,7 +66,7 @@ Afin de naviguer clairement vers les flux de facturation.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (implementation Epic 1)
 
 ### Debug Log References
 
@@ -73,8 +74,28 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour shell authentifie, navigation et profil.
+- Shell: `AppShell` avec `nav` (`aria-label`), liens actifs, `main#main`, ThemeSwitcher dans le header, bouton deconnexion appelant `POST /auth/logout` + `clearAccessToken`.
+- Profil: `GET/PATCH /users/profile` (Bearer + `credentials`), messages FR via `mapApiErrorToMessage`.
+- Middleware: redirection `/login` si absence du cookie `ff_access_token` sur `/factures`, `/clients`, `/prestations`, `/profil-vendeur`.
+- Tests: `app-shell.test.tsx`, `theme-form-stability.test.tsx`.
+- Commits: `feat(#2):` x3 (shell+nav, profil API, tests).
 
 ### File List
 
+- `frontend/src/middleware.ts`
+- `frontend/src/components/layout/app-shell.tsx`
+- `frontend/src/components/layout/app-shell.test.tsx`
+- `frontend/src/components/theme-form-stability.test.tsx`
+- `frontend/src/components/profile/profile-form.tsx`
+- `frontend/src/app/(app)/layout.tsx`
+- `frontend/src/app/(app)/factures/page.tsx`
+- `frontend/src/app/(app)/clients/page.tsx`
+- `frontend/src/app/(app)/prestations/page.tsx`
+- `frontend/src/app/(app)/profil-vendeur/page.tsx`
+- `frontend/src/lib/api/profile-api.ts`
+- `frontend/src/components/theme-provider.tsx` (ajustements hydration / lint)
 - `_bmad-output/implementation-artifacts/1-6-frontend-authenticated-shell-profile-signout.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 1.6 dans le repo `frontend` (meme branche epic 1).

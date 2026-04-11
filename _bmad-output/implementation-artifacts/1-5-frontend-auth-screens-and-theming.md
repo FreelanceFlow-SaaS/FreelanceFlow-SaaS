@@ -1,6 +1,6 @@
 # Story 1.5: Frontend - Next.js bootstrap, design system tokens, and auth screens
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,20 +22,20 @@ Afin d'utiliser l'application sans confusion ni blocage.
 
 ## Tasks / Subtasks
 
-- [ ] Initialiser le socle UI auth
-  - [ ] Verifier l'architecture Next App Router et les routes `src/app/(auth)/login` et `src/app/(auth)/register`
-  - [ ] Creer les composants UI reutilisables dans `src/components/ui/` (Input, Label, Button, Alert)
-- [ ] Mettre en place les tokens et themes
-  - [ ] Definir les tokens semantiques CSS variables pour `default`, `ocean`, `forest`, `high-contrast`
-  - [ ] Implementer le switch via `data-theme` + persistance `localStorage`
-  - [ ] Ajouter le support optionnel `data-appearance` et fallback `prefers-reduced-motion`
-- [ ] Implementer les formulaires auth accessibles
-  - [ ] Labels explicites, `aria-invalid`, `aria-describedby` et etat disabled/loading
-  - [ ] Mapping des erreurs backend (`code`, `details`) vers messages FR actionnables
-  - [ ] Preservation des champs non invalides apres echec
-- [ ] Couvrir les tests critiques
-  - [ ] Tests unitaires/composants pour rendu FR, etats erreur, et focus
-  - [ ] Test d'integration pour persistance de theme
+- [x] Initialiser le socle UI auth
+  - [x] Verifier l'architecture Next App Router et les routes `src/app/(auth)/login` et `src/app/(auth)/register`
+  - [x] Creer les composants UI reutilisables dans `src/components/ui/` (Input, Label, Button, Alert)
+- [x] Mettre en place les tokens et themes
+  - [x] Definir les tokens semantiques CSS variables pour `default`, `ocean`, `forest`, `high-contrast`
+  - [x] Implementer le switch via `data-theme` + persistance `localStorage`
+  - [x] Ajouter le support optionnel `data-appearance` et fallback `prefers-reduced-motion`
+- [x] Implementer les formulaires auth accessibles
+  - [x] Labels explicites, `aria-invalid`, `aria-describedby` et etat disabled/loading
+  - [x] Mapping des erreurs backend (`code`, `details`) vers messages FR actionnables
+  - [x] Preservation des champs non invalides apres echec
+- [x] Couvrir les tests critiques
+  - [x] Tests unitaires/composants pour rendu FR, etats erreur, et focus
+  - [x] Test d'integration pour persistance de theme
 
 ## Dev Notes
 
@@ -62,7 +62,7 @@ Afin d'utiliser l'application sans confusion ni blocage.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (implementation Epic 1)
 
 ### Debug Log References
 
@@ -70,8 +70,44 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree avec exigences frontend, UX et architecture consolidees.
+- UI auth: Radix Label + Slot (Button), tokens CSS par `data-theme` / `data-color-mode`, ThemeProvider + ThemeSwitcher, formulaires login/register en FR avec `fetch` direct Nest (`NEXT_PUBLIC_API_URL`), `credentials: include`, JWT + cookie miroir pour middleware.
+- README: strategie API documentee ; `.env.example` pour la base URL.
+- Commits frontend (branche `feature/epic-1-account-session-seller-profile`): `feat(#1):` x4 (foundation, themes, forms, tests).
 
 ### File List
 
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/.env.example`
+- `frontend/README.md`
+- `frontend/vitest.config.ts`
+- `frontend/src/test/setup.ts`
+- `frontend/src/app/globals.css`
+- `frontend/src/app/layout.tsx`
+- `frontend/src/app/page.tsx`
+- `frontend/src/app/(auth)/layout.tsx`
+- `frontend/src/app/(auth)/login/page.tsx`
+- `frontend/src/app/(auth)/register/page.tsx`
+- `frontend/src/components/ui/alert.tsx`
+- `frontend/src/components/ui/button.tsx`
+- `frontend/src/components/ui/input.tsx`
+- `frontend/src/components/ui/label.tsx`
+- `frontend/src/components/theme-provider.tsx`
+- `frontend/src/components/theme-switcher.tsx`
+- `frontend/src/components/auth/login-form.tsx`
+- `frontend/src/components/auth/register-form.tsx`
+- `frontend/src/lib/utils.ts`
+- `frontend/src/lib/theme/constants.ts`
+- `frontend/src/lib/api/base-url.ts`
+- `frontend/src/lib/auth/constants.ts`
+- `frontend/src/lib/auth/session.ts`
+- `frontend/src/lib/auth/map-api-error.ts`
+- `frontend/src/lib/auth/auth-api.ts`
+- `frontend/src/lib/auth/map-api-error.test.ts`
+- `frontend/src/components/auth/login-form.test.tsx`
+- `frontend/src/components/theme-switcher.test.tsx`
 - `_bmad-output/implementation-artifacts/1-5-frontend-auth-screens-and-theming.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 1.5 dans le repo `frontend` (PR a ouvrir vers `develop`).
