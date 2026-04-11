@@ -1,6 +1,6 @@
 # Story 2.4: Frontend - Delete client with confirmation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,11 +22,11 @@ Afin d'eviter les suppressions accidentelles.
 
 ## Tasks / Subtasks
 
-- [ ] Ajouter action supprimer sur liste/detail client
-- [ ] Implementer dialog de confirmation destructif (Radix Dialog)
-- [ ] Brancher mutation delete + loading state
-- [ ] Afficher feedback succes/erreur FR et rafraichir la liste
-- [ ] Couvrir test d'integration du flux complet
+- [x] Ajouter action supprimer sur liste/detail client
+- [x] Implementer dialog de confirmation destructif (Radix Dialog)
+- [x] Brancher mutation delete + loading state
+- [x] Afficher feedback succes/erreur FR et rafraichir la liste
+- [x] Couvrir test d'integration du flux complet
 
 ## Dev Notes
 
@@ -37,7 +37,7 @@ Afin d'eviter les suppressions accidentelles.
 
 - `src/modules/clients/components/delete-client-dialog.tsx`
 - `src/app/(app)/clients/page.tsx`
-- `src/app/(app)/clients/[id]/*`
+- `src/components/ui/dialog.tsx`
 
 ### References
 
@@ -48,7 +48,7 @@ Afin d'eviter les suppressions accidentelles.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 2)
 
 ### Debug Log References
 
@@ -56,8 +56,20 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour suppression client securisee.
+- `@radix-ui/react-dialog`, primitifs encapsules dans `components/ui/dialog.tsx`, `DELETE /clients/:id` (204), message d'erreur inline dans le dialog, rafraichissement liste + `?deleted=1` pour bandeau.
+- Commit: `feat(#5): Add delete client confirmation dialog`.
 
 ### File List
 
+- `frontend/package.json`
+- `frontend/package-lock.json`
+- `frontend/src/components/ui/dialog.tsx`
+- `frontend/src/modules/clients/components/delete-client-dialog.tsx`
+- `frontend/src/modules/clients/components/delete-client-dialog.test.tsx`
+- `frontend/src/modules/clients/components/clients-list.tsx`
+- `frontend/src/lib/api/clients-api.ts` (deleteClient)
 - `_bmad-output/implementation-artifacts/2-4-frontend-delete-client-confirmation.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 2.4.

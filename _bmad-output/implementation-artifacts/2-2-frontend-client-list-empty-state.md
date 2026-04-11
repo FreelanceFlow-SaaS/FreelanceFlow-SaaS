@@ -1,6 +1,6 @@
 # Story 2.2: Frontend - Client list and empty state
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,17 +19,17 @@ Afin de savoir comment creer mon premier client.
 
 ## Tasks / Subtasks
 
-- [ ] Implementer la page liste clients
-  - [ ] Route `src/app/(app)/clients/page.tsx`
-  - [ ] Requete API liste clients et etats loading/error/success
-- [ ] Implementer `ResourceEmptyState` pour clients
-  - [ ] Copy FR concise + CTA principal "Ajouter un client"
-- [ ] Implementer tableau/liste clients
-  - [ ] Colonnes minimales (nom, email, entreprise)
-  - [ ] Lien vers route detail/edition
-- [ ] Couvrir accessibilite et tests
-  - [ ] Focus clavier, intitulés explicites, ordre des titres
-  - [ ] Test des 2 etats: vide vs non vide
+- [x] Implementer la page liste clients
+  - [x] Route `src/app/(app)/clients/page.tsx`
+  - [x] Requete API liste clients et etats loading/error/success
+- [x] Implementer `ResourceEmptyState` pour clients
+  - [x] Copy FR concise + CTA principal "Ajouter un client"
+- [x] Implementer tableau/liste clients
+  - [x] Colonnes minimales (nom, email, entreprise)
+  - [x] Lien vers route detail/edition
+- [x] Couvrir accessibilite et tests
+  - [x] Focus clavier, intitulés explicites, ordre des titres
+  - [x] Test des 2 etats: vide vs non vide
 
 ## Dev Notes
 
@@ -40,7 +40,7 @@ Afin de savoir comment creer mon premier client.
 
 - `src/app/(app)/clients/page.tsx`
 - `src/components/shared/resource-empty-state.tsx`
-- `src/modules/clients/*`
+- `src/modules/clients/components/clients-list.tsx`
 
 ### References
 
@@ -51,7 +51,7 @@ Afin de savoir comment creer mon premier client.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 2)
 
 ### Debug Log References
 
@@ -59,8 +59,19 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour la liste clients et l'etat vide.
+- Liste `GET /api/v1/clients`, skeleton de chargement, tableau avec `caption` sr-only, liens vers `/clients/[id]/edit`.
+- Commit frontend: `feat(#3): Add client list page and empty state`.
 
 ### File List
 
+- `frontend/src/lib/api/clients-api.ts`
+- `frontend/src/components/shared/resource-empty-state.tsx`
+- `frontend/src/components/shared/resource-empty-state.test.tsx`
+- `frontend/src/modules/clients/components/clients-list.tsx`
+- `frontend/src/modules/clients/components/clients-list.test.tsx`
+- `frontend/src/app/(app)/clients/page.tsx`
 - `_bmad-output/implementation-artifacts/2-2-frontend-client-list-empty-state.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 2.2 (branche `feature/epic-2-client-directory`).

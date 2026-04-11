@@ -1,6 +1,6 @@
 # Story 2.3: Frontend - Create and edit client
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,19 +22,19 @@ Afin de garder mon annuaire a jour.
 
 ## Tasks / Subtasks
 
-- [ ] Implementer les routes create/edit clients
-  - [ ] `src/app/(app)/clients/new/page.tsx`
-  - [ ] `src/app/(app)/clients/[id]/edit/page.tsx`
-- [ ] Construire un formulaire client reutilisable
-  - [ ] Champs: name, email, company, address
-  - [ ] Validation locale + mapping erreur backend FR (`details`)
-  - [ ] `aria-invalid`, `aria-describedby`
-- [ ] Gerer mutation et retour UX
-  - [ ] Success toast/inline + refresh liste
-  - [ ] Bouton principal unique selon contexte
-- [ ] Tests
-  - [ ] Cas succes create/edit
-  - [ ] Cas echec validation sans perte des champs valides
+- [x] Implementer les routes create/edit clients
+  - [x] `src/app/(app)/clients/new/page.tsx`
+  - [x] `src/app/(app)/clients/[id]/edit/page.tsx`
+- [x] Construire un formulaire client reutilisable
+  - [x] Champs: name, email, company, address
+  - [x] Validation locale + mapping erreur backend FR (`details`)
+  - [x] `aria-invalid`, `aria-describedby`
+- [x] Gerer mutation et retour UX
+  - [x] Success toast/inline + refresh liste
+  - [x] Bouton principal unique selon contexte
+- [x] Tests
+  - [x] Cas succes create/edit
+  - [x] Cas echec validation sans perte des champs valides
 
 ## Dev Notes
 
@@ -58,7 +58,7 @@ Afin de garder mon annuaire a jour.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 2)
 
 ### Debug Log References
 
@@ -66,8 +66,20 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour create/edit client.
+- `ClientForm` mode `create` | `edit`, `POST/PATCH /clients`, redirection vers `/clients?created=1` ou `?updated=1`, bandeau de succes sur la liste (`useSearchParams` + `Suspense`).
+- Commit: `feat(#4): Add client create and edit flows`.
 
 ### File List
 
+- `frontend/src/modules/clients/components/client-form.tsx`
+- `frontend/src/modules/clients/components/client-form.test.tsx`
+- `frontend/src/app/(app)/clients/new/page.tsx`
+- `frontend/src/app/(app)/clients/[id]/edit/page.tsx`
+- `frontend/src/app/(app)/clients/page.tsx` (Suspense pour `useSearchParams`)
+- `frontend/src/modules/clients/components/clients-list.tsx` (bandeaux succes)
+- `frontend/src/lib/api/clients-api.ts` (create/update)
 - `_bmad-output/implementation-artifacts/2-3-frontend-create-edit-client.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 2.3.
