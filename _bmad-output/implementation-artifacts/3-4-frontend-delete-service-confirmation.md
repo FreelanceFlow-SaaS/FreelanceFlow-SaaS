@@ -1,6 +1,6 @@
 # Story 3.4: Frontend - Delete service with confirmation
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -16,11 +16,11 @@ Afin de retirer les offres obsoletes sans erreur.
 
 ## Tasks / Subtasks
 
-- [ ] Ajouter action supprimer dans la liste/detail prestation
-- [ ] Implementer dialog de confirmation FR (style destructif)
-- [ ] Brancher mutation delete + loading + erreurs FR
-- [ ] Rafraichir liste sur succes
-- [ ] Ajouter test d'integration suppression/confirmee-annulee
+- [x] Ajouter action supprimer dans la liste/detail prestation
+- [x] Implementer dialog de confirmation FR (style destructif)
+- [x] Brancher mutation delete + loading + erreurs FR
+- [x] Rafraichir liste sur succes
+- [x] Ajouter test d'integration suppression/confirmee-annulee
 
 ## Dev Notes
 
@@ -31,6 +31,7 @@ Afin de retirer les offres obsoletes sans erreur.
 
 - `src/modules/services/components/delete-service-dialog.tsx`
 - `src/app/(app)/prestations/page.tsx`
+- `src/components/ui/dialog.tsx`
 
 ### References
 
@@ -41,7 +42,7 @@ Afin de retirer les offres obsoletes sans erreur.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 3)
 
 ### Debug Log References
 
@@ -49,8 +50,17 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour suppression prestation.
+- `DELETE /services/:id` (204), dialog Radix alignee clients, rafraichissement + `?deleted=1`.
+- Commit: `feat(#8): Add delete service confirmation dialog`.
 
 ### File List
 
+- `frontend/src/modules/services/components/delete-service-dialog.tsx`
+- `frontend/src/modules/services/components/delete-service-dialog.test.tsx`
+- `frontend/src/modules/services/components/services-list.tsx`
+- `frontend/src/lib/api/services-api.ts`
 - `_bmad-output/implementation-artifacts/3-4-frontend-delete-service-confirmation.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 3.4.

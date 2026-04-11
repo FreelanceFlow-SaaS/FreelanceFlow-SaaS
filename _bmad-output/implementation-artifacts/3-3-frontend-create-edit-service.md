@@ -1,6 +1,6 @@
 # Story 3.3: Frontend - Create and edit service
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,12 +19,12 @@ Afin de garder mes titres et tarifs a jour.
 
 ## Tasks / Subtasks
 
-- [ ] Implementer pages create/edit prestation
-- [ ] Construire formulaire prestation reutilisable (title, hourlyRate)
-- [ ] Valider et mapper erreurs backend FR (`details`)
-- [ ] Conserver les valeurs non invalides apres echec
-- [ ] Ajouter feedback succes (toast/inline) et mise a jour liste
-- [ ] Ecrire tests succes et echec validation
+- [x] Implementer pages create/edit prestation
+- [x] Construire formulaire prestation reutilisable (title, hourlyRate)
+- [x] Valider et mapper erreurs backend FR (`details`)
+- [x] Conserver les valeurs non invalides apres echec
+- [x] Ajouter feedback succes (toast/inline) et mise a jour liste
+- [x] Ecrire tests succes et echec validation
 
 ## Dev Notes
 
@@ -47,7 +47,7 @@ Afin de garder mes titres et tarifs a jour.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 3)
 
 ### Debug Log References
 
@@ -55,8 +55,20 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour create/edit prestation.
+- `ServiceForm` mode `create` | `edit`, saisie taux en texte avec virgule/point, validation locale puis `POST/PATCH /services`, redirection `?created=1` / `?updated=1`, bandeaux sur la liste (`Suspense` + `useSearchParams`).
+- Commit: `feat(#7): Add service create and edit flows`.
 
 ### File List
 
+- `frontend/src/modules/services/components/service-form.tsx`
+- `frontend/src/modules/services/components/service-form.test.tsx`
+- `frontend/src/app/(app)/prestations/new/page.tsx`
+- `frontend/src/app/(app)/prestations/[id]/edit/page.tsx`
+- `frontend/src/app/(app)/prestations/page.tsx`
+- `frontend/src/modules/services/components/services-list.tsx`
+- `frontend/src/lib/api/services-api.ts`
 - `_bmad-output/implementation-artifacts/3-3-frontend-create-edit-service.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 3.3.

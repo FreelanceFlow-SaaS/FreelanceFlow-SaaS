@@ -1,6 +1,6 @@
 # Story 3.2: Frontend - Service list and empty state
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,11 +19,11 @@ Afin de preparer le catalogue avant facturation.
 
 ## Tasks / Subtasks
 
-- [ ] Implementer la page liste prestations
-- [ ] Reutiliser `ResourceEmptyState` pour etat vide
-- [ ] Afficher les montants via `MoneyDisplay` en locale FR/EUR
-- [ ] Appliquer `font-variant-numeric: tabular-nums` sur colonnes monetaire
-- [ ] Tester etat vide, etat rempli, et format des montants
+- [x] Implementer la page liste prestations
+- [x] Reutiliser `ResourceEmptyState` pour etat vide
+- [x] Afficher les montants via `MoneyDisplay` en locale FR/EUR
+- [x] Appliquer `font-variant-numeric: tabular-nums` sur colonnes monetaire
+- [x] Tester etat vide, etat rempli, et format des montants
 
 ## Dev Notes
 
@@ -35,6 +35,7 @@ Afin de preparer le catalogue avant facturation.
 - `src/app/(app)/prestations/page.tsx`
 - `src/components/shared/resource-empty-state.tsx`
 - `src/components/shared/money-display.tsx`
+- `src/modules/services/components/services-list.tsx`
 
 ### References
 
@@ -45,7 +46,7 @@ Afin de preparer le catalogue avant facturation.
 
 ### Agent Model Used
 
-gpt-5.3-codex-low
+Cursor agent (Epic 3)
 
 ### Debug Log References
 
@@ -53,8 +54,19 @@ gpt-5.3-codex-low
 
 ### Completion Notes List
 
-- Story context cree pour la liste prestations.
+- `GET /api/v1/services`, skeleton, tableau titre + taux HT avec `MoneyDisplay` et `tabular-nums`, liens vers `/prestations/[id]/edit`.
+- Commit: `feat(#6): Add service list, empty state, and MoneyDisplay`.
 
 ### File List
 
+- `frontend/src/lib/api/services-api.ts`
+- `frontend/src/components/shared/money-display.tsx`
+- `frontend/src/components/shared/money-display.test.tsx`
+- `frontend/src/modules/services/components/services-list.tsx`
+- `frontend/src/modules/services/components/services-list.test.tsx`
+- `frontend/src/app/(app)/prestations/page.tsx`
 - `_bmad-output/implementation-artifacts/3-2-frontend-service-list-empty-state.md`
+
+## Change Log
+
+- 2026-04-11: Implementation story 3.2 (branche `feature/epic-3-billable-services`).
