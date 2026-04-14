@@ -1,15 +1,17 @@
-# FreelanceFlow — Schéma de base de données (V1)
+# FreelanceFlow — Schéma de base de données
 
-Modèle **PostgreSQL**, conventions **snake_case** en base, aligné PRD (clients, prestations, factures HT/TVA/TTC, statuts, profil vendeur, isolation par compte).
+Modèle **PostgreSQL**, défini par **Prisma** (`backend/prisma/schema.prisma`) et migrations dans `backend/prisma/migrations/`. Conventions **snake_case** en base, alignement PRD (clients, prestations, factures HT/TVA/TTC, statuts, profil vendeur, isolation par compte).
 
 ## Diagramme entités-relations
 
 ```mermaid
 erDiagram
   users ||--o| freelancer_profiles : "1 profil vendeur"
+  users ||--o| invoice_counters : "compteur factures"
   users ||--o{ clients : possede
   users ||--o{ services : possede
   users ||--o{ invoices : possede
+  users ||--o{ refresh_tokens : sessions
   clients ||--o{ invoices : facture
   invoices ||--o{ invoice_lines : contient
   services ||--o{ invoice_lines : "référence optionnelle"
@@ -28,15 +30,29 @@ erDiagram
     uuid user_id FK_UK
     string display_name
     string legal_name
-    string company_name
+    string company_name "nullable"
     string address_line1
-    string address_line2
+    string address_line2 "nullable"
     string postal_code
     string city
     string country
     string vat_number "nullable"
     string siret "nullable"
     timestamptz updated_at
+  }
+
+  invoice_counters {
+    uuid user_id PK_FK
+    int year
+    int seq
+  }
+
+  refresh_tokens {
+    uuid id PK
+    uuid user_id FK
+    string token_hash
+    timestamptz expires_at
+    timestamptz created_at
   }
 
   clients {
@@ -103,21 +119,21 @@ erDiagram
 
 | Sujet | Choix |
 |--------|--------|
-| **Tenant** | Toutes les tables métier portent `user_id` (sauf `users`). Requêtes toujours filtrées par utilisateur authentifié. |
-| **Profil vendeur** | `freelancer_profiles` : informations affichées sur facture/PDF (FR5/FR6). Champs légaux (SIRET, n° TVA) **optionnels** en V1 si hors scope produit. |
-| **Lignes de facture** | **Snapshot** : `description`, `unit_price_ht`, `vat_rate`, montants ligne — cohérent même si la prestation est modifiée ou supprimée (`service_id` nullable, `ON DELETE SET NULL`). |
-| **Totaux facture** | `total_ht`, `total_vat`, `total_ttc` **dénormalisés** sur `invoices` : source d’affichage/PDF alignée avec les lignes (FR23). Recalcul côté service à chaque mutation autorisée. |
-| **Numéro de facture** | Unique **par utilisateur** : `UNIQUE (user_id, invoice_number)`. |
-| **Statuts** | `draft`, `sent`, `paid`, `cancelled` — transitions à verrouiller dans l’API (PRD Mehdi). |
-| **Suppression client** | Tant qu’au moins une facture référence le client : **`ON DELETE RESTRICT`** (ou logique équivalente). |
-| **Monnaie** | `currency` défaut `EUR` ; montants en `NUMERIC` (jamais `float`). |
+| **Tenant** | Tables métier portent `user_id` (sauf `users`). Requêtes filtrées par utilisateur authentifié. |
+| **Profil vendeur** | `freelancer_profiles` : infos facture/PDF. Champs légaux (SIRET, n° TVA) optionnels. |
+| **Lignes de facture** | **Snapshot** : `description`, `unit_price_ht`, `vat_rate`, montants — cohérent si la prestation change (`service_id` nullable, **`ON DELETE SET NULL`** côté base). |
+| **Totaux facture** | `total_ht`, `total_vat`, `total_ttc` dénormalisés sur `invoices` ; recalcul côté service aux mutations. |
+| **Numéro de facture** | Unique **par utilisateur** : `UNIQUE (user_id, invoice_number)`. Séquence annuelle optionnelle via `invoice_counters` (une ligne par utilisateur, clé primaire `user_id`). |
+| **Statuts** | Enum Prisma / PG `InvoiceStatus` : `draft`, `sent`, `paid`, `cancelled`. |
+| **Suppression client** | **`ON DELETE RESTRICT`** sur `invoices.client_id` si des factures référencent le client. |
+| **Monnaie** | `currency` défaut `EUR` (`CHAR(3)` en base) ; montants en `DECIMAL` / `NUMERIC`. |
+| **JWT / session** | `refresh_tokens` : hash du token, expiration, lien `user_id` ; suppression en cascade si l’utilisateur est supprimé. |
 
 ## Schéma Prisma (référence d’implémentation)
 
-À placer dans le repo backend, par ex. `prisma/schema.prisma`. Adapter `provider` / `url` selon l’environnement.
+Fichier source : `backend/prisma/schema.prisma`.
 
 ```prisma
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -127,24 +143,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum InvoiceStatus {
-  draft
-  sent
-  paid
-  cancelled
-}
-
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  profile  FreelancerProfile?
-  clients  Client[]
-  services Service[]
-  invoices Invoice[]
+  id             String             @id @default(uuid()) @db.Uuid
+  email          String             @unique
+  passwordHash   String             @map("password_hash")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+  clients        Client[]
+  profile        FreelancerProfile?
+  invoices       Invoice[]
+  services       Service[]
+  refreshTokens  RefreshToken[]
+  invoiceCounter InvoiceCounter?
 
   @@map("users")
 }
@@ -163,8 +173,7 @@ model FreelancerProfile {
   vatNumber    String?  @map("vat_number")
   siret        String?
   updatedAt    DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("freelancer_profiles")
 }
@@ -178,48 +187,45 @@ model Client {
   address   String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoices Invoice[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
 
   @@index([userId])
   @@map("clients")
 }
 
 model Service {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  title       String
-  hourlyRateHt Decimal @map("hourly_rate_ht") @db.Decimal(12, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lines InvoiceLine[]
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  title        String
+  hourlyRateHt Decimal       @map("hourly_rate_ht") @db.Decimal(12, 2)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  lines        InvoiceLine[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("services")
 }
 
 model Invoice {
-  id            String        @id @default(uuid()) @db.Uuid
-  userId        String        @map("user_id") @db.Uuid
-  clientId      String        @map("client_id") @db.Uuid
-  invoiceNumber String        @map("invoice_number")
-  status        InvoiceStatus @default(draft)
-  issueDate     DateTime      @map("issue_date") @db.Date
-  dueDate       DateTime?     @map("due_date") @db.Date
-  currency      String        @default("EUR") @db.Char(3)
-  totalHt       Decimal       @map("total_ht") @db.Decimal(12, 2)
-  totalVat      Decimal       @map("total_vat") @db.Decimal(12, 2)
-  totalTtc      Decimal       @map("total_ttc") @db.Decimal(12, 2)
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client  Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  lines   InvoiceLine[]
-  events  InvoiceStatusEvent[]
+  id            String               @id @default(uuid()) @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  clientId      String               @map("client_id") @db.Uuid
+  invoiceNumber String               @map("invoice_number")
+  status        InvoiceStatus        @default(draft)
+  issueDate     DateTime             @map("issue_date") @db.Date
+  dueDate       DateTime?            @map("due_date") @db.Date
+  currency      String               @default("EUR") @db.Char(3)
+  totalHt       Decimal              @map("total_ht") @db.Decimal(12, 2)
+  totalVat      Decimal              @map("total_vat") @db.Decimal(12, 2)
+  totalTtc      Decimal              @map("total_ttc") @db.Decimal(12, 2)
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+  lines         InvoiceLine[]
+  events        InvoiceStatusEvent[]
+  client        Client               @relation(fields: [clientId], references: [id])
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, invoiceNumber])
   @@index([userId])
@@ -240,131 +246,210 @@ model InvoiceLine {
   lineVat     Decimal  @map("line_vat") @db.Decimal(12, 2)
   lineTtc     Decimal  @map("line_ttc") @db.Decimal(12, 2)
   createdAt   DateTime @default(now()) @map("created_at")
-
-  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  service     Service? @relation(fields: [serviceId], references: [id])
 
   @@index([invoiceId])
   @@map("invoice_lines")
 }
 
-/// Optionnel V1 : traçabilité des changements de statut (audit PRD).
 model InvoiceStatusEvent {
-  id        String   @id @default(uuid()) @db.Uuid
-  invoiceId String   @map("invoice_id") @db.Uuid
+  id         String         @id @default(uuid()) @db.Uuid
+  invoiceId  String         @map("invoice_id") @db.Uuid
   fromStatus InvoiceStatus? @map("from_status")
-  toStatus  InvoiceStatus  @map("to_status")
-  changedAt DateTime @default(now()) @map("changed_at")
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  toStatus   InvoiceStatus  @map("to_status")
+  changedAt  DateTime       @default(now()) @map("changed_at")
+  invoice    Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
   @@map("invoice_status_events")
 }
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  cancelled
+}
+
+/// Compteur de factures par utilisateur (incrément atomique côté appli pour numéros uniques).
+model InvoiceCounter {
+  userId String @id @map("user_id") @db.Uuid
+  year   Int
+  seq    Int    @default(0)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_counters")
+}
+
+/// Stockage des refresh tokens (JWT).
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
 ```
 
-### Note Prisma sur `InvoiceStatusEvent`
+### Notes Prisma
 
-Si tu n’implémentes pas l’historique en V1, supprime le modèle `InvoiceStatusEvent` et la relation `events` sur `Invoice`.
+- **`InvoiceStatusEvent`** : présent en base ; tu peux retirer le modèle et la relation `events` sur `Invoice` si tu n’utilises pas l’historique.
+- **`InvoiceLine.service`** : en migration SQL, la FK `service_id` est en **`ON DELETE SET NULL`**. Pour que le schéma Prisma le reflète explicitement : `onDelete: SetNull` sur la relation `service`.
+- Les **`@default(uuid())`** sont gérés par le client Prisma à l’insertion ; les fichiers SQL générés n’ajoutent pas toujours `DEFAULT gen_random_uuid()` sur les colonnes `id`.
 
-## SQL DDL équivalent (référence)
+## SQL DDL (aligné migrations Prisma)
+
+L’enum PostgreSQL créée par Prisma s’appelle **`"InvoiceStatus"`** (casse sensible). Horodatages en **`TIMESTAMP(3)`** dans les migrations actuelles.
 
 ```sql
-CREATE TYPE invoice_status AS ENUM ('draft', 'sent', 'paid', 'cancelled');
+CREATE TYPE "InvoiceStatus" AS ENUM ('draft', 'sent', 'paid', 'cancelled');
 
-CREATE TABLE users (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email           TEXT NOT NULL UNIQUE,
-  password_hash   TEXT NOT NULL,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "users" (
+  "id" UUID NOT NULL,
+  "email" TEXT NOT NULL,
+  "password_hash" TEXT NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+CREATE TABLE "freelancer_profiles" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "display_name" TEXT NOT NULL,
+  "legal_name" TEXT NOT NULL,
+  "company_name" TEXT,
+  "address_line1" TEXT NOT NULL,
+  "address_line2" TEXT,
+  "postal_code" TEXT NOT NULL,
+  "city" TEXT NOT NULL,
+  "country" TEXT NOT NULL DEFAULT 'FR',
+  "vat_number" TEXT,
+  "siret" TEXT,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "freelancer_profiles_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "freelancer_profiles_user_id_key" UNIQUE ("user_id"),
+  CONSTRAINT "freelancer_profiles_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE freelancer_profiles (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id         UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-  display_name    TEXT NOT NULL,
-  legal_name      TEXT NOT NULL,
-  company_name    TEXT,
-  address_line1   TEXT NOT NULL,
-  address_line2   TEXT,
-  postal_code     TEXT NOT NULL,
-  city            TEXT NOT NULL,
-  country         CHAR(2) NOT NULL DEFAULT 'FR',
-  vat_number      TEXT,
-  siret           TEXT,
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "clients" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "name" TEXT NOT NULL,
+  "email" TEXT NOT NULL,
+  "company" TEXT NOT NULL,
+  "address" TEXT NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "clients_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "clients_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX "clients_user_id_idx" ON "clients"("user_id");
+
+CREATE TABLE "services" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "title" TEXT NOT NULL,
+  "hourly_rate_ht" DECIMAL(12,2) NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "services_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "services_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX "services_user_id_idx" ON "services"("user_id");
+
+CREATE TABLE "invoices" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "client_id" UUID NOT NULL,
+  "invoice_number" TEXT NOT NULL,
+  "status" "InvoiceStatus" NOT NULL DEFAULT 'draft',
+  "issue_date" DATE NOT NULL,
+  "due_date" DATE,
+  "currency" CHAR(3) NOT NULL DEFAULT 'EUR',
+  "total_ht" DECIMAL(12,2) NOT NULL,
+  "total_vat" DECIMAL(12,2) NOT NULL,
+  "total_ttc" DECIMAL(12,2) NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "invoices_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "invoices_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "invoices_client_id_fkey"
+    FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT "invoices_user_id_invoice_number_key" UNIQUE ("user_id", "invoice_number")
+);
+CREATE INDEX "invoices_user_id_idx" ON "invoices"("user_id");
+CREATE INDEX "invoices_client_id_idx" ON "invoices"("client_id");
+
+CREATE TABLE "invoice_lines" (
+  "id" UUID NOT NULL,
+  "invoice_id" UUID NOT NULL,
+  "service_id" UUID,
+  "line_order" INTEGER NOT NULL,
+  "description" TEXT NOT NULL,
+  "quantity" DECIMAL(10,2) NOT NULL,
+  "unit_price_ht" DECIMAL(12,2) NOT NULL,
+  "vat_rate" DECIMAL(5,4) NOT NULL,
+  "line_ht" DECIMAL(12,2) NOT NULL,
+  "line_vat" DECIMAL(12,2) NOT NULL,
+  "line_ttc" DECIMAL(12,2) NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "invoice_lines_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "invoice_lines_invoice_id_fkey"
+    FOREIGN KEY ("invoice_id") REFERENCES "invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "invoice_lines_service_id_fkey"
+    FOREIGN KEY ("service_id") REFERENCES "services"("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+CREATE INDEX "invoice_lines_invoice_id_idx" ON "invoice_lines"("invoice_id");
+
+CREATE TABLE "invoice_status_events" (
+  "id" UUID NOT NULL,
+  "invoice_id" UUID NOT NULL,
+  "from_status" "InvoiceStatus",
+  "to_status" "InvoiceStatus" NOT NULL,
+  "changed_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "invoice_status_events_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "invoice_status_events_invoice_id_fkey"
+    FOREIGN KEY ("invoice_id") REFERENCES "invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE INDEX "invoice_status_events_invoice_id_idx" ON "invoice_status_events"("invoice_id");
+
+CREATE TABLE "invoice_counters" (
+  "user_id" UUID NOT NULL,
+  "year" INTEGER NOT NULL,
+  "seq" INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT "invoice_counters_pkey" PRIMARY KEY ("user_id"),
+  CONSTRAINT "invoice_counters_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE clients (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name        TEXT NOT NULL,
-  email       TEXT NOT NULL,
-  company     TEXT NOT NULL,
-  address     TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "refresh_tokens" (
+  "id" UUID NOT NULL,
+  "user_id" UUID NOT NULL,
+  "token_hash" TEXT NOT NULL,
+  "expires_at" TIMESTAMP(3) NOT NULL,
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "refresh_tokens_user_id_fkey"
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
-CREATE INDEX idx_clients_user_id ON clients(user_id);
-
-CREATE TABLE services (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title            TEXT NOT NULL,
-  hourly_rate_ht   NUMERIC(12, 2) NOT NULL,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_services_user_id ON services(user_id);
-
-CREATE TABLE invoices (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  client_id        UUID NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
-  invoice_number   TEXT NOT NULL,
-  status           invoice_status NOT NULL DEFAULT 'draft',
-  issue_date       DATE NOT NULL,
-  due_date         DATE,
-  currency         CHAR(3) NOT NULL DEFAULT 'EUR',
-  total_ht         NUMERIC(12, 2) NOT NULL,
-  total_vat        NUMERIC(12, 2) NOT NULL,
-  total_ttc        NUMERIC(12, 2) NOT NULL,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (user_id, invoice_number)
-);
-CREATE INDEX idx_invoices_user_id ON invoices(user_id);
-CREATE INDEX idx_invoices_client_id ON invoices(client_id);
-
-CREATE TABLE invoice_lines (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_id    UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-  service_id    UUID REFERENCES services(id) ON DELETE SET NULL,
-  line_order    INT NOT NULL,
-  description   TEXT NOT NULL,
-  quantity      NUMERIC(10, 2) NOT NULL,
-  unit_price_ht NUMERIC(12, 2) NOT NULL,
-  vat_rate      NUMERIC(5, 4) NOT NULL,
-  line_ht       NUMERIC(12, 2) NOT NULL,
-  line_vat      NUMERIC(12, 2) NOT NULL,
-  line_ttc      NUMERIC(12, 2) NOT NULL,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_invoice_lines_invoice_id ON invoice_lines(invoice_id);
-
-CREATE TABLE invoice_status_events (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  invoice_id  UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-  from_status invoice_status,
-  to_status   invoice_status NOT NULL,
-  changed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_invoice_status_events_invoice_id ON invoice_status_events(invoice_id);
+CREATE INDEX "refresh_tokens_user_id_idx" ON "refresh_tokens"("user_id");
+CREATE INDEX "refresh_tokens_token_hash_idx" ON "refresh_tokens"("token_hash");
 ```
 
-## Extensions possibles (hors V1 minimal)
+## Extensions possibles (non présentes aujourd’hui)
 
-- Table `refresh_tokens` (hash, `user_id`, expiration) si refresh JWT en base.
-- Numérotation séquentielle dédiée : table `invoice_counters (user_id, year, last_value)` si tu veux des numéros type `2026-0042` sans collision.
+- **`onDelete: SetNull`** explicite sur la relation Prisma `InvoiceLine` → `Service` (déjà le comportement SQL).
 - Soft delete (`deleted_at`) sur `clients` / `invoices` si la politique de rétention fiscale l’exige plutôt que la suppression dure.
+- Contrainte ou table dédiée si tu passes à une numérotation **plusieurs lignes par utilisateur et par an** (aujourd’hui `invoice_counters` a une seule ligne par `user_id`, avec colonnes `year` et `seq`).

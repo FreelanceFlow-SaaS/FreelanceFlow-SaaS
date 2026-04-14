@@ -6,6 +6,7 @@ user_name: Dredjib
 status: complete
 lastStep: 8
 completedAt: '2026-03-27'
+lastUpdated: '2026-04-14'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - docs/presentation.md
@@ -59,14 +60,15 @@ _This document is the single source of truth for technical decisions for AI-assi
 
 - **Split repositories** imply explicit **API contract** (versioned REST), **CORS**, and aligned **environment variables** (API URL, public vs server-only secrets).
 - **State consistency:** invoice totals and PDF generation must use the **same backend services** that persist data.
-- **No mandatory third-party integrations in V1** beyond hosting/registry choices.
+- **No mandatory third-party integrations in V1** beyond hosting/registry choices. **Redis**, **managed Grafana Cloud**, and **transactional email APIs** are **optional** until the team enables those features; when enabled, they become **documented infrastructure dependencies** (env vars, runbook).
 
 ### Cross-Cutting Concerns
 
 - **Tenant isolation** (user/account id on every domain operation).
 - **Auditable money fields** (stored line amounts and tax breakdown, not only derived in the UI).
 - **Error shape and validation** consistency between Nest and Next.
-- **Observability** sufficient for staging/production debugging and course evaluation.
+- **Observability** sufficient for staging/production debugging and course evaluation — **Grafana-centric stack** (see Observability decision).
+- **Caching and async work** — **Redis** for bounded staleness / invalidation on invoice and list reads, and optional **job queues** for email and heavy PDF paths (see Redis decision).
 
 ---
 
@@ -124,7 +126,9 @@ nest new freelanceflow-api --package-manager npm --strict
 
 **Important:**
 
-- DTO validation library; error response format; date/decimal handling for money and VAT.
+- DTO validation library; error response format; date/decimal handling for money and VAT.  
+- **Redis** availability when caching, rate limits, or queues are enabled; **cache invalidation** contract for invoices and lists (**FR43** / **NFR-C1**).  
+- **Grafana** (or self-hosted LGTM) endpoints and credentials for staging/production; **OpenTelemetry** export configuration.
 
 **Deferred (post-MVP):**
 
@@ -191,13 +195,60 @@ nest new freelanceflow-api --package-manager npm --strict
 | CI/CD | Separate pipelines per repo: install → lint → format check → test → build → Docker build → publish → deploy to **staging** / **prod** | PRD |
 | Environments | `staging` and `production`; load tests run against **staging** with **recorded metrics** | PRD journey (Léa) |
 
+### Redis: caching, rate limiting, and job queues
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Technology | **Redis** (connection via `REDIS_URL` in backend `.env.example`) | Single well-supported component for cache, rate limits, and BullMQ-style queues |
+| Rate limiting | Per-`userId` (and route) limits on sensitive endpoints (**login**, **PDF**, future **send email**) | Protects infra from abuse; aligns with SaaS fairness |
+| Job queues | **BullMQ** (or equivalent) on Redis for **async email** and optional **async PDF** | Avoids blocking HTTP; retries and failure visibility |
+| Session / JWT extras | Optional: refresh rotation metadata or token blocklist in Redis — **document if adopted** | Keeps stateless JWT story unless team explicitly extends |
+
+### Invoice and list caching (PRD-aligned)
+
+**Product vocabulary vs PRD:** business language such as **“validated”** / **“issued”** maps to PRD statuses **`sent`**, **`paid`**, or **`cancelled`** — not **`draft`**. Until a separate `validated` status exists in the schema, treat **`sent` and above** as the **cache-eligible** band for **read-heavy invoice payloads** (detail DTO, precomputed read models).
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Draft (`draft`)** | **Do not** rely on long-lived cache for invoice totals or line items; at most **very short TTL** or **no cache** for invoice-by-id | Lines and HT/TVA/TTC change often; incorrect cache violates PRD integrity |
+| **Stable band (`sent`, `paid`, `cancelled`)** | **Allow** cache-aside for **GET invoice by id** (tenant-scoped key) and related **list/dashboard slices** after successful Postgres commit | Fewer redundant reads under load; matches PRD intent for “cached or equivalent” optimizations |
+| **Warm / populate** | On status transition **into** `sent` (or first read after transition), **write** cache entry **after** transaction commit, **or** **invalidate** list/dashboard keys only and let next read refill | Guarantees post-transition reads see new truth |
+| **Invalidation** | On **any** mutation that affects aggregates: line edits (if allowed by rules), **any status transition**, client changes affecting displayed invoice — **delete** `user:{id}:invoice:{invoiceId}` and **invalidate** `user:{id}:dashboard` / list key families documented per endpoint class | PRD **FR43** / **NFR-C1**: correctness after writes; prefer **read-your-writes** for the acting user |
+| **Staleness budget** | Team-doc default per PRD: **≤ 60 s** for non-actor readers unless invalidation fires first; **stricter** for the user who performed the write (**invalidate or immediate cache update**) | Bounded eventual consistency |
+| **PDF bytes** | **Do not** store full PDF binaries in Redis; cache **metadata** (e.g. `updatedAt` / content hash) if needed; generate stream from **persisted** invoice | Memory, eviction, and single source of truth |
+
+**Key naming (example):** `user:{userId}:invoice:{invoiceId}` for detail; `user:{userId}:invoices:list:{cursorOrHash}` for paginated lists — **always** include tenant id in the key.
+
+### Observability (Grafana stack)
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Primary stack | **Grafana** as the **visualization and alerting** layer; backends **Prometheus** (metrics), **Loki** (logs), **Tempo** (traces) — “**LGTM**” pattern | Industry-standard OSS; **lower entry cost** than a full managed Elastic Observability footprint for typical student / MVP traffic |
+| Managed vs self-hosted | **Prefer Grafana Cloud** for fastest path (free tier subject to vendor quotas); **alternative:** docker-compose **self-hosted** LGTM on existing VPS for **license cost €0** | Team picks one and documents URLs and retention in README/runbook |
+| Instrumentation | **OpenTelemetry** in **NestJS** first (traces + metrics hooks); structured **JSON logs** (level, `requestId`, route, `statusCode`) shipped to **Loki** | Vendor-neutral export; PRD **V2** asks observability to be **documented for operators** |
+| Elastic | **Not** the default observability vendor for this project | Cost/TCO and operational simplicity favor Grafana for this scope; re-evaluate only if enterprise mandates Elastic |
+| PII / GDPR | **No** secrets, tokens, or full invoice line payloads in logs; **minimize** raw email; if `userId` appears, follow team redaction policy | Compliance and safe debugging |
+
+### Email delivery and attachments
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Transport | **Development:** `SMTP_*` variables already sketched in backend `.env.example`. **Production:** prefer a **transactional email API** (e.g. Resend, Postmark, Brevo, SES) for deliverability, bounces, and quotas | SMTP alone is fragile at scale |
+| Nest integration | **`@nestjs-modules/mailer`** (Nodemailer) for SMTP **or** thin HTTP client for provider API — **one** approach per environment, documented | Predictable configuration |
+| Attachments (invoice PDF) | Prefer **generating from persisted invoice** in Nest, then **stream** to mail transport **or** attach from **short-lived temp file** deleted after send; respect provider **size limits** | Legal/audit parity with PDF decision |
+| Alternative to large attachments | Email body with **time-limited signed URL** to `GET /api/v1/invoices/:id/pdf` (auth) reduces spam-filter issues | Product trade-off: link vs attachment |
+| Async sending | **Queue** (BullMQ + Redis): API enqueues “send invoice email” job; worker sends mail, records success/failure for support | Non-blocking requests; retries |
+
 ### Decision Impact and Implementation Sequence
 
 1. Bootstrap Nest + DB + Prisma/TypeORM + auth + OpenAPI.  
 2. Implement domain modules (clients, services, invoices) with tenant guards.  
-3. Add PDF pipeline and integration tests for VAT and parity.  
-4. Bootstrap Next.js; implement auth UX and feature pages against `/api/v1`.  
-5. Wire Docker and compose; then CI/CD and staging promotion.
+3. Add **Redis** client module; implement **cache + invalidation** hooks on invoice status and mutations per **Invoice and list caching** table; add **rate limiting** on sensitive routes.  
+4. Add PDF pipeline and integration tests for VAT and parity.  
+5. Add **mail + queue** modules when outbound email ships (V2 or earlier if scoped); never attach PDFs not sourced from persisted invoice rows.  
+6. Bootstrap Next.js; implement auth UX and feature pages against `/api/v1`.  
+7. Wire Docker and compose (include **Redis** where applicable); add **OTel + log JSON** config; document **Grafana** datasource URLs and dashboards in README/runbook.  
+8. CI/CD and staging promotion; load tests still target **staging** with metrics recorded (can include Redis and mail worker health).
 
 ---
 
@@ -227,6 +278,7 @@ nest new freelanceflow-api --package-manager npm --strict
 
 - Feature modules: `src/modules/<feature>/` with `controller`, `service`, `dto`, optional `entities` or Prisma usage.
 - Shared: `src/common/` (guards, pipes, filters, interceptors).
+- Cross-cutting: optional `src/modules/redis/` or `src/common/cache/` (Redis client + cache helpers); `src/modules/mail/` + `src/modules/queue/` when email/jobs ship; telemetry bootstrap next to `main.ts` (OpenTelemetry).
 
 **Frontend (Next.js):**
 
@@ -249,7 +301,7 @@ nest new freelanceflow-api --package-manager npm --strict
 
 - **Validation:** `class-validator` + DTOs on Nest inputs; mirror constraints in Zod on Next only if doing client-side preview — **server remains authoritative**.
 - **Loading/errors:** Next client components use explicit `isLoading` / `error` state; map API codes to French user messages in UI layer.
-- **Logging:** structured logs in Nest (request id, `userId` where safe); no secrets in logs.
+- **Logging:** structured **JSON** logs in Nest (request id, route, `statusCode`, `userId` only per redaction policy); **no** secrets, tokens, or full invoice payloads; format chosen for **Loki** ingestion (Grafana stack).
 
 ### Enforcement (for all implementers / AI agents)
 
@@ -257,9 +309,13 @@ nest new freelanceflow-api --package-manager npm --strict
 - **MUST** use the same error JSON shape for all Nest HTTP errors.
 - **MUST** generate PDF only from persisted invoice data via backend services.
 - **MUST NOT** use binary floating point for persisted monetary amounts.
+- **MUST** invalidate or update Redis cache keys affected by any invoice **create/update/delete** or **status transition** before returning success to the client (or apply documented read-your-writes strategy per **NFR-C1**).
+- **MUST NOT** cache **`draft`** invoice financial snapshots with long TTL; stable-band caching rules in **Invoice and list caching** apply.
+- **MUST NOT** store full **PDF binaries** in Redis; PDFs flow from persisted data at generation time.
 
 **Good example:** `GET /api/v1/invoices/:id` returns 404 if the invoice belongs to another user.  
-**Anti-pattern:** trusting `clientId` from the body without checking it belongs to the current user.
+**Anti-pattern:** trusting `clientId` from the body without checking it belongs to the current user.  
+**Anti-pattern:** serving a cached invoice detail after a status change without invalidation, causing stale HT/TVA/TTC.
 
 ---
 
@@ -333,7 +389,9 @@ freelanceflow-api/
 │       ├── clients/
 │       ├── services/
 │       ├── invoices/
-│       └── pdf/
+│       ├── pdf/
+│       ├── mail/                   # optional: transactional email
+│       └── queue/                  # optional: BullMQ processors (email, etc.)
 └── test/                           # e2e tests
 ```
 
@@ -353,13 +411,17 @@ freelanceflow-api/
 | Invoices + VAT | `modules/invoices/` (Nest); `components/features/invoices/` (Next) |
 | PDF | `modules/pdf/` (Nest) |
 | OpenAPI | `main.ts` Swagger setup + DTO decorators |
+| Redis / cache | `common/cache/` or `modules/redis/` (Nest); invalidation from `modules/invoices/` |
+| Outbound email + attachments | `modules/mail/` + `modules/queue/` (Nest); env: `SMTP_*` and/or provider API keys |
+| Observability | OTel + JSON logs in Nest; Grafana (Loki/Tempo/Prometheus) — **no** app code dependency on Grafana UI libraries |
 
 ### Integration and Data Flow
 
 1. User signs in via Next → Nest `POST /api/v1/auth/login` → JWT returned.  
 2. Next stores/refreshes token per chosen strategy.  
 3. CRUD flows call Nest; Nest validates DTOs, applies tenant scope, persists.  
-4. PDF: Next triggers `GET` or `POST /api/v1/invoices/:id/pdf` → Nest loads invoice, renders PDF stream.
+4. PDF: Next triggers `GET` or `POST /api/v1/invoices/:id/pdf` → Nest loads invoice, renders PDF stream.  
+5. Optional email: user action → Nest persists state → **enqueue** job → worker loads **persisted** invoice, builds PDF if needed, sends via **mail** module (attachment or signed link per product choice).
 
 ---
 
@@ -370,11 +432,15 @@ freelanceflow-api/
 - **Next + Nest + PostgreSQL** are a common, compatible stack; versions should be pinned at bootstrap (`@latest` today, lockfile tomorrow).
 - **Tenant isolation** is enforced at the service/repository layer in Nest, matching SaaS requirements.
 - **PDF on Nest** aligns with “server-side truth” and UI parity.
+- **Redis + Nest** is a standard pairing for cache and BullMQ; rules keep **money fields** authoritative in Postgres.
+- **Grafana LGTM + OTel** is a coherent, cost-conscious observability path without binding domain code to a single commercial APM UI.
 
 ### Requirements Coverage
 
 - **Functional:** Auth, clients, services, invoices, statuses, PDF, API docs — all mapped to modules and routes.
-- **NFR:** CI/CD, Docker, tests, staging load test, GDPR awareness — addressed in decisions and patterns.
+- **NFR:** CI/CD, Docker, tests, staging load test, GDPR awareness — addressed in decisions and patterns.  
+- **Caching (FR43 / NFR-C1):** Redis invalidation and stable-band invoice caching — documented under **Invoice and list caching**.  
+- **Observability:** Grafana stack + OTel — documented under **Observability (Grafana stack)**.
 
 ### Implementation Readiness
 
@@ -387,12 +453,16 @@ freelanceflow-api/
 | Important | Exact **SIRET/SIREN/RCS** fields in V1 | PRD asks explicit in/out — product decision, then reflect in schema and PDF |
 | Important | **Status transition** matrix | Finalize in domain doc or story before coding Mehdi journey |
 | Nice | Shared **OpenAPI-generated TypeScript client** | Optional codegen from Nest Swagger for stronger coupling |
+| Resolved (2026-04-14) | **Observability vendor** | **Grafana** (LGTM / Grafana Cloud) chosen over Elastic for cost and ops fit — see dedicated section |
+| Resolved (2026-04-14) | **Cache strategy for invoices** | **Redis** + rules for `draft` vs `sent`/`paid`/`cancelled` + invalidation — see **Invoice and list caching** |
+| Resolved (2026-04-14) | **Email + PDF attachment** | **Mail module + queue**; persisted invoice as source; SMTP dev / transactional API prod — see **Email delivery and attachments** |
 
 ### Architecture Completeness Checklist
 
 - [x] Project context analyzed against PRD  
 - [x] Starter commands and version verification strategy documented  
 - [x] Critical decisions: data, auth, API, PDF, deployment  
+- [x] Redis, invoice cache invalidation, Grafana observability, email + attachments (2026-04-14 amendment)  
 - [x] Naming, structure, error, and tenant patterns defined  
 - [x] Two-repository directory trees and boundaries  
 - [x] Validation and gaps recorded  
@@ -411,6 +481,7 @@ freelanceflow-api/
 - **Completed at:** 2026-03-27  
 - **Workflow type:** architecture  
 - **Inputs used:** `prd.md`, `docs/presentation.md`  
-- **UX design artifact:** none in `planning-artifacts` (optional follow-up: `bmad-create-ux-design` if you want UI specs).
+- **UX design artifact:** none in `planning-artifacts` (optional follow-up: `bmad-create-ux-design` if you want UI specs).  
+- **Post-completion amendment (2026-04-14):** Redis (cache, queues, rate limits), **invoice cache rules** (`draft` vs stable statuses), **Grafana** observability stack, **email + PDF attachments** — all merged into **Core Architectural Decisions** and related sections above.
 
 For **what to do next** in BMad: you are past planning for architecture — typical next steps are **epics/stories** (`bmad-create-epics-and-stories`), **sprint planning** (`bmad-sprint-planning`), or **story implementation** (`bmad-dev-story` / `bmad-quick-dev`) using this document as the technical contract.

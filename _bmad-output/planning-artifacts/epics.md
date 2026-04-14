@@ -1,19 +1,16 @@
 ---
-
-## stepsCompleted:
-
-- step-01-validate-prerequisites
-- step-02-design-epics
-- step-03-create-stories
-- step-04-final-validation
+stepsCompleted:
+  - step-01-validate-prerequisites
+  - step-02-design-epics
+  - step-03-create-stories
+  - step-04-final-validation
 workflowStatus: complete
-workflowType: create-epics-and-stories
-completedAt: '2026-03-27'
+completedAt: '2026-04-14'
 inputDocuments:
-- _bmad-output/planning-artifacts/prd.md
-- _bmad-output/planning-artifacts/architecture.md
-- _bmad-output/planning-artifacts/ux-design-specification.md
-workflowNote: "ux-design-directions.html explicitly excluded per stakeholder (2026-03-27)."
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux-design-specification.md
+---
 
 # FreelanceFlow - SaaS - Epic Breakdown
 
@@ -57,641 +54,730 @@ FR28: The product can operate monetary amounts in EUR for V1.
 FR29: When required invoice or client fields are missing or invalid, the user can see clear validation feedback and correct the input.
 FR30: The product's behavior and labels avoid claiming legal certification beyond what is implemented; limitations can be communicated via product copy or documentation as agreed by the team.
 FR31: A reviewer can identify the product version or release identifier exposed in the deployed application or documentation (as defined by the team) to match grading and support expectations.
+FR32: An authenticated user can send an invoice by email to one or more recipient addresses, with a text message (subject/body as defined by the team) and the generated PDF for that invoice attached.
+FR33: Email send uses the same invoice data as FR24–FR27 at send time; on failure, the user receives a clear error and the system does not claim success.
+FR34: An authenticated user can export their clients to a CSV file with a documented column set.
+FR35: An authenticated user can export their invoices to a CSV file with a documented column set (including amounts and identifiers consistent with stored data).
+FR36: An authenticated user can view a dashboard showing total revenue across their invoices per documented revenue rules (e.g. based on status such as paid—team-defined and consistent with exports).
+FR37: The dashboard shows the total count of invoices for the account.
+FR38: The dashboard shows revenue aggregated by client.
+FR39: The dashboard shows revenue aggregated by month (calendar month or billing period—team-defined).
+FR40: All dashboard figures in FR36–FR39 are computed from persisted invoice (and related) data, not static placeholders.
+FR41: An authenticated user can upload or replace a logo image used for invoice PDFs (format/size limits as defined by the team).
+FR42: Generated PDFs can render the user's current logo without obscuring mandatory invoice content required by the implemented rules.
+FR43: The product can apply a documented caching strategy to reduce redundant computation or database reads for dashboard and list endpoints while preserving correctness after create/update/delete operations affecting those views (invalidation or TTL documented per endpoint class).
 ```
 
 ### NonFunctional Requirements
 
 ```
-NFR1: Primary interactive flows (sign-in, list/detail views, save invoice, trigger PDF) complete within a team-defined response-time budget acceptable for a web SaaS (exact thresholds recorded with the load-test report).
-NFR2: A load test runs against the staging environment before promotion to production; metrics (e.g. throughput, latency percentiles, error rate) are documented and meet team-agreed thresholds for the V1 release.
-NFR3: PDF generation may be slower than simple CRUD; the user receives feedback (e.g. in-progress state) so the UI does not appear frozen during generation.
-NFR4: All browser-to-server traffic uses HTTPS in staging and production.
-NFR5: Credentials and session tokens are handled using industry-standard practices (e.g. salted hashing for passwords, secure session or token settings); secrets are not committed to the repository.
-NFR6: Authorization is enforced server-side for every mutating and read operation on domain data (clients, services, invoices, PDFs)—FR4 is technically guaranteed, not UI-only.
-NFR7: Personal data (freelancer and client PII) is processed in line with GDPR expectations: minimal collection, restricted access, and a documented stance on retention and deletion in README or privacy notice as appropriate for V1.
-NFR8: V1 targets a small concurrent user base (course and early adopters); the architecture may assume modest load, but staging load tests must still demonstrate predictable behavior under the agreed scenario.
-NFR9: If traffic grows, the team can scale the deployment path (e.g. more instances, managed DB) without redesigning core domain rules—exact mechanism is implementation-specific.
-NFR10: The web UI follows a reasonable baseline for keyboard and screen-reader use on primary flows (navigation, forms, actions); the team may target WCAG 2.1 Level A as a stretch goal where feasible for V1.
-NFR11: No mandatory integration with external billing, tax, or accounting systems in V1; outbound PDF remains the primary artifact. Future integrations are out of scope for NFR validation unless added to the PRD.
+NFR-P1: Primary interactive flows (sign-in, list/detail views, save invoice, trigger PDF) complete within a team-defined response-time budget acceptable for a web SaaS (exact thresholds recorded with the load-test report).
+NFR-P2: A load test runs against the staging environment before promotion to production; metrics (e.g. throughput, latency percentiles, error rate) are documented and meet team-agreed thresholds for the V1 release.
+NFR-P3: PDF generation may be slower than simple CRUD; the user receives feedback (e.g. in-progress state) so the UI does not appear frozen during generation.
+NFR-S1: All browser-to-server traffic uses HTTPS in staging and production.
+NFR-S2: Credentials and session tokens are handled using industry-standard practices (e.g. salted hashing for passwords, secure session or token settings); secrets are not committed to the repository.
+NFR-S3: Authorization is enforced server-side for every mutating and read operation on domain data (clients, services, invoices, PDFs)—FR4 is technically guaranteed, not UI-only.
+NFR-S4: Personal data (freelancer and client PII) is processed in line with GDPR expectations: minimal collection, restricted access, and a documented stance on retention and deletion in README or privacy notice as appropriate for V1.
+NFR-SC1: V1 targets a small concurrent user base (course and early adopters); the architecture may assume modest load, but staging load tests must still demonstrate predictable behavior under the agreed scenario.
+NFR-SC2: If traffic grows, the team can scale the deployment path (e.g. more instances, managed DB) without redesigning core domain rules—exact mechanism is implementation-specific.
+NFR-A1: The web UI follows a reasonable baseline for keyboard and screen-reader use on primary flows (navigation, forms, actions); the team may target WCAG 2.1 Level A as a stretch goal where feasible for V1.
+NFR-I1: No mandatory integration with external billing, tax, or accounting systems in V1; outbound PDF remains the primary artifact. Future integrations are out of scope for NFR validation unless added to the PRD.
+NFR-I2 (V2): Transactional email integration (or equivalent) is required for FR32–FR33; provider credentials are environment-managed; rate limits and failures are handled without exposing secrets to clients. Transient failures: at least one bounded automatic retry before surfacing a user-visible failure (total wait and retry count documented in runbook); permanent failures return a clear, non-success outcome without implying delivery.
+NFR-C1: Cached responses for dashboard and lists reflect eventual consistency bounded by a team-documented maximum staleness after writes, or use invalidation that guarantees read-your-writes for the acting user where feasible.
+NFR-C2: Cache mechanism (e.g. process memory, shared external cache, or HTTP caching semantics) is implementation-specific but must be safe for multi-instance deployment if the team runs more than one app instance in staging/production.
+NFR-O1: Application logs for API and background tasks use machine-parseable fields (severity level, timestamp, correlation identifier per request where applicable) consistent across services, and contain no unredacted secrets.
+NFR-O2: A monitoring dashboard or page is reachable in staging and production via embedded health UI, vendor-hosted operations console, or provider-native metrics linked from README—without mandating a specific vendor—and exposes at minimum service liveness, recent errors or error rate, and optional additional metrics agreed by the team.
+NFR-O3: CI/CD pipelines and deployment practices updated for V2 remain green on the default branch for the same classes of checks as V1 unless the team documents intentional scope changes.
+NFR-G1: V2 ships with clean backlog hygiene (issues/PRs traceable to requirements FR32+), a tagged release (recommended v2.0.0 or team scheme), and release notes describing operational changes (email provider, cache, monitoring).
+NFR-G2: The production and staging environments remain reachable after V2 rollout; rollback or feature-flag strategy is documented if email or cache introduces new failure modes.
 ```
 
 ### Additional Requirements
 
 ```
-- Epic 1 / first implementation story context: Greenfield bootstrap using official starters — Next.js via `create-next-app@latest` (TypeScript, ESLint, App Router, src dir) in a dedicated frontend repo; NestJS via `@nestjs/cli@latest` (`nest new`) in a dedicated backend repo; pin resolved versions in package.json after init.
-- Two separate Git repositories (frontend Next.js, backend NestJS); aligned env vars (API URL, secrets); API contract is versioned REST under `/api/v1`.
-- OpenAPI/Swagger generated from Nest DTOs; contract documentation required for evaluators.
-- CORS: allow frontend origin(s) only; credentials policy aligned with JWT/cookie strategy.
-- Database: PostgreSQL; ORM/migrations: Prisma (recommended) or TypeORM — team picks one consistently; tenant column `userId` (or `accountId`) on all tenant-owned rows; every query filters by authenticated user; never use binary floating point for persisted monetary amounts; store numeric/decimal or minor units per domain rules.
-- Authentication: JWT access (short-lived) + refresh (httpOnly cookie or documented secure storage); passwords hashed with bcrypt or Argon2; Nest guards on every controller; validate resource ownership in services (e.g. 404 for other user's invoice).
-- JSON: camelCase; dates in API as ISO-8601 UTC; display localization in Next for French users.
-- Errors: unified JSON shape (statusCode, message, optional code, details for validation); Nest exception filter maps all HTTP errors to this shape.
-- PDF: generated only in Nest from persisted invoice graph by id and userId (Puppeteer HTML→PDF or PDFKit/similar); Next triggers download endpoint; idempotency documented for PDF generation where relevant.
-- Next.js: App Router under `src/app`; server components for read-heavy pages where appropriate; typed API client module in `src/lib/api/`; protected routes via middleware or layout + token checks; team documents whether browser calls Nest directly (CORS) or via Next Route Handlers (BFF).
-- Structure: Nest feature modules under `src/modules/<feature>/`; Next `src/components/ui/` and `src/components/features/<domain>/`; backend tests as `*.spec.ts` colocated unless team standardizes otherwise.
-- Infrastructure: Dockerfile in each repo; docker-compose (or equivalent) to run full stack locally; separate CI pipelines per repo: install → lint → format check → test → build → Docker build → registry publish → deploy to staging and production.
-- Git flow: feature/* → develop → staging → main; load tests run against staging with recorded metrics before production promotion.
-- Enforcement: MUST tenant-filter all persistence; MUST same error JSON shape; MUST PDF from backend persisted data only; MUST NOT float for money in DB.
-- Product/architecture gaps to close in implementation planning: explicit in/out scope for SIREN/SIRET/RCS in V1; finalize invoice status transition matrix before coding correction flows (Mehdi journey).
+- **Epic 1 / Story 1 relevance — starters:** Initialize two separate repositories using official starters: Next.js via `npx create-next-app@latest` (TypeScript, ESLint, App Router, `--src-dir`, import alias `@/*`); NestJS via `nest new` with `@nestjs/cli@latest` (strict, npm). Pin resolved framework versions in package.json after scaffold.
+- **Repository model:** Two Git repositories (frontend Next.js, backend NestJS); explicit API contract, CORS, aligned environment variables (API URL, secrets).
+- **API:** REST under prefix `/api/v1`; OpenAPI/Swagger generated from Nest DTOs for evaluator documentation.
+- **CORS:** Allow frontend origin(s) only; credentials policy aligned with JWT/cookie strategy.
+- **Data:** PostgreSQL; ORM **Prisma or TypeORM** — team picks one and documents; migrations required.
+- **Money and tax:** Store numeric/decimal types in DB; domain rules for minor units or fixed precision; **never float** for persisted monetary amounts.
+- **Tenant isolation:** Column `userId` (or `accountId`) on all tenant-owned rows; every query filters by authenticated user; tests must cover forbidden cross-tenant access.
+- **Auth:** JWT access (short-lived) + refresh (httpOnly cookie or documented secure storage); passwords hashed with bcrypt or Argon2.
+- **JSON/API conventions:** camelCase in JSON; dates ISO-8601 UTC in API; unified error body: `statusCode`, `message`, optional `code`, `details` for validation.
+- **PDF:** Generated only in NestJS from persisted invoice graph by id **and** userId; same services as persistence (no client-only truth for amounts).
+- **Next.js patterns:** App Router under `src/app`; server components for read-heavy pages where appropriate; single typed API client module; auth via middleware or layout checks.
+- **Infrastructure:** Dockerfile in each repo; docker-compose (or documented equivalent) for local full stack; separate CI pipelines: install → lint → format check → test → build → Docker build → publish → deploy to staging/production.
+- **Git flow:** feature/* → develop → staging → main; load tests with recorded metrics against staging before production promotion.
+- **Redis:** Use for cache, rate limits (per userId and route on login, PDF, future send-email), and BullMQ (or equivalent) job queues for async email and optional async PDF; `REDIS_URL` in backend `.env.example` when enabled.
+- **Invoice caching (FR43 / NFR-C1):** Do not rely on long-lived cache for draft invoice financial snapshots; allow cache-aside for GET invoice by id and list/dashboard slices for statuses sent/paid/cancelled after Postgres commit; invalidate or update keys on any mutation affecting aggregates; do not store full PDF binaries in Redis; key naming includes tenant id (e.g. `user:{userId}:invoice:{invoiceId}`).
+- **Observability (V2-aligned):** Grafana as visualization layer; Prometheus (metrics), Loki (logs), Tempo (traces) — LGTM pattern; prefer Grafana Cloud or self-hosted; OpenTelemetry in Nest first; structured JSON logs (level, requestId, route, statusCode) for Loki; no secrets, tokens, or full invoice payloads in logs; minimize raw email.
+- **Email (V2):** Dev: SMTP_* in .env.example; production: transactional email API preferred; Nest: `@nestjs-modules/mailer`/Nodemailer or HTTP client to provider — one approach per environment, documented; attachments from persisted invoice (stream or short-lived temp file); async send via queue with retries.
+- **Product/architecture gaps to close in stories:** Finalize **invoice status transition matrix** before implementing correction flows; decide **SIRET/SIREN/RCS** in or out of V1 schema and PDF; document Next ↔ Nest pattern (direct CORS vs Next Route Handlers as BFF) in README at kickoff.
+- **Idempotency:** Document for PDF generation and future payment-related endpoints.
+- **Success response shape:** Choose direct DTO vs `{ data: T }` and pagination wrapper `{ data, meta }` — team consistent.
+- **Enforcement (Nest):** MUST enforce tenant filter on every persistence query for tenant data; MUST use same error JSON shape; MUST invalidate/update Redis per invoice mutations before returning success (or documented read-your-writes); MUST NOT cache draft financial snapshots with long TTL.
 ```
 
 ### UX Design Requirements
 
 ```
-UX-DR1: Implement the UI foundation with Radix UI Primitives wrapped in `src/components/ui/`, Tailwind CSS, and semantic design tokens as CSS custom properties (e.g. background, foreground, primary, destructive, ring); feature code must not use raw hex—only token-based utilities.
-UX-DR2: Implement multiple named color themes (at minimum default, ocean, forest, high-contrast) switched via `data-theme` on the document root, persisted in localStorage; optional Radix Colors scales mapped into tokens; validate contrast for text, buttons, errors, and focus rings per theme including high-contrast.
-UX-DR3: Optional light/dark: support `data-appearance` (or equivalent) layered with `data-theme`; respect prefers-color-scheme only as default until user sets an explicit preference; respect prefers-reduced-motion for non-essential animations (including theme transitions).
-UX-DR4: Lock app shell to Design Direction 1: persistent left sidebar for primary nav (Factures, Clients, Prestations, Profil vendeur), active route highlighting, logo/account/sign-out in chrome; root layout implements this shell for all authenticated routes.
-UX-DR5: Invoice create/edit/detail: on viewports lg and above, use two-column layout with line editor in main column and sticky right rail for HT / TVA / TTC summary and status; below lg, stack summary below lines or use collapsible panel; align breakpoints with Tailwind defaults (critical switch at lg 1024px).
-UX-DR6: Implement InvoiceLineTable (or InvoiceLinesEditor): add/remove/reorder lines, pick service to prefill description and unit HT, per-line HT/VAT/TTC and EUR formatting, states for loading, editable vs read-only by status, empty and row error states; semantic table with tabular-nums; keyboard-friendly cells where applicable.
-UX-DR7: Implement InvoiceTotalsPanel: displays HT, VAT, TTC, EUR, and status badge aligned with server after save; loading on refetch; landmark/heading for “Synthèse”; tabular numeric presentation.
-UX-DR8: Implement InvoiceStatusActions: expose only allowed status transitions as primary/secondary buttons; disabled actions show tooltip or helper explaining why; destructive transitions open Radix Dialog with French confirmation copy; loading and error retry on mutation.
-UX-DR9: Implement ResourceEmptyState for Clients, Services, and Invoices lists with one headline, one sentence, and one primary CTA toward the next step in the journey (per UX journeys A–C).
-UX-DR10: Implement ThemeSwitcher in header or settings to change `data-theme` without resetting form state; persist selection in localStorage.
-UX-DR11: Implement MoneyDisplay (or equivalent pattern) for consistent EUR formatting and tabular figures everywhere amounts appear (lists, summaries, PDF CTA area).
-UX-DR12: All user-visible strings in French; map Nest structured errors (`code`, `details`) to short, actionable French messages (toast or inline alert); field-level validation with labels always visible, aria-invalid and aria-describedby on errors; preserve non-invalid field values on failure.
-UX-DR13: PDF trigger: explicit loading state and copy (e.g. “Génération en cours…”); success path enables download; failure shows retry and error detail; consider aria-live for generation result for screen readers.
-UX-DR14: Follow button hierarchy: one primary per view for main forward action; destructive actions use destructive token + confirmation dialog; disabled controls never silent—tooltip or helper when blocked by status or permissions.
-UX-DR15: Feedback: toast for save, status change, PDF ready (avoid duplicates); validation summary optional; loading skeletons on lists; spinner/disabled on long actions.
-UX-DR16: Navigation: list → detail with back to list; deep links to invoice URLs; breadcrumbs or back affordances where specified; invoice list supports at least minimal sort by date/status when scoped in V1 polish phase.
-UX-DR17: Responsive: tablet sidebar may collapse to icon rail or drawer (team choice); mobile single column with hamburger or bottom nav (pick one); touch targets minimum 44×44px for primary nav and actions; horizontal scroll wrapper for wide tables on narrow screens if needed.
-UX-DR18: Accessibility: WCAG 2.1 Level A baseline on primary flows; focus visible via ring token on all interactive elements; invoice status conveyed with badge + text not color alone; semantic landmarks (main, nav); decorative icons aria-hidden; icon-only buttons have French aria-label.
-UX-DR19: Typography: professional neutral sans (team-chosen web or system stack); modular type scale; body ~16px minimum for forms; tabular-nums on all monetary columns.
-UX-DR20: Copy and empty states align with V1 scope: honest framing for optional SIRET/TVA; no legal certification claims beyond implemented rules (supports FR30).
-UX-DR21: Prerequisite prompts: when seller profile or first client is missing, guide user inline toward profile or client creation before blocking invoice/PDF flows (Journey A).
-UX-DR22: Document snapshot semantics where lines copy catalog data at issue time: short inline help so users understand catalog changes do not rewrite past invoices (where product rules define snapshots).
-UX-DR23: No raw `@radix-ui/*` imports in feature folders—only wrapped components from `src/components/ui/` to enforce tokens and patterns.
+UX-DR1: Install and wrap Radix UI Primitives in `src/components/ui/` with Tailwind classes reading semantic CSS variables; feature code must not use one-off hex values—only semantic tokens (e.g. bg-primary, text-muted-foreground, border-border).
+UX-DR2: Implement multiple named color themes (minimum: default, ocean, forest, high-contrast) as sets of CSS custom properties switched via `data-theme` on the document root (or root layout wrapper), persisted in localStorage; optional Radix Colors scales as source for harmonious palettes.
+UX-DR3: Lock **Design Direction 1** for the authenticated shell: persistent **left sidebar** primary navigation (Factures, Clients, Prestations, Profil vendeur); active nav state per route; neutral chrome so themes swap without layout fork.
+UX-DR4: Invoice create/edit layout: on viewports **lg and above** (≥1024px), **two-column** layout—main column for line editor and table, **sticky right rail** for HT / TVA / TTC summary; below **lg**, stack to **single column** (summary below lines or collapsible panel—team choice documented).
+UX-DR5: Implement **InvoiceLineTable** (or `InvoiceLinesEditor`): add, remove, reorder lines; pick **service** to prefill description and unit HT; per-line HT, VAT rate, line totals with **tabular-nums** and EUR formatting; states: loading skeleton, editable (draft), read-only when status disallows edit, empty (no lines), row-level error; accessibility: table semantics, row headers, keyboard navigation through inputs.
+UX-DR6: Implement **InvoiceTotalsPanel**: displays HT, VAT, TTC, currency EUR, and **status** badge; sticky on desktop; after save, values mirror server totals; loading on refetch; accessibility: region landmark or heading "Synthèse", values as text with tabular nums.
+UX-DR7: Implement **InvoiceStatusActions**: expose allowed status transitions as primary/secondary buttons; disabled controls include **tooltip or helper text** explaining why; destructive actions open **Radix Dialog** confirmation with clear French copy; loading on mutation and error with retry.
+UX-DR8: Implement **ResourceEmptyState** for Clients, Services, and Invoices lists: one headline, one short sentence, one primary CTA; variant for first-time vs optional "no results after filter" when filters exist.
+UX-DR9: Implement **ThemeSwitcher** in header or settings: switches `data-theme` presets; optional light/dark (`data-appearance` or layered with theme); switching theme must not reset form state; respect prefers-color-scheme only as default until user sets explicit preference.
+UX-DR10: Implement **MoneyDisplay** (or equivalent pattern): consistent EUR formatting and `font-variant-numeric: tabular-nums` on all monetary columns, totals, summaries, and PDF-related CTAs.
+UX-DR11: Map invoice status visuals to **semantic** token roles (e.g. draft = muted, sent = primary/accent, paid = success, cancelled = muted or warning); **never rely on color alone**—pair **badge + French text label** (e.g. "Payée").
+UX-DR12: Typography: modular scale for page title, section title, card title, body, caption; body minimum ~16px equivalent on forms; one primary professional sans-serif stack for UI and invoice tables (specific font chosen at implementation).
+UX-DR13: Spacing: base unit 4px (0.25rem); rhythm steps 4, 8, 12, 16, 24, 32, 48; comfortable form padding; slightly tighter row height on invoice line tables on desktop for density.
+UX-DR14: Focus and a11y baseline: visible **focus rings** using design token `--ring` on all interactive elements; no `outline: none` without replacement; form labels always visible (not placeholder-only); `aria-invalid` and `aria-describedby` on validation errors; honor **prefers-reduced-motion** for theme and drawer transitions.
+UX-DR15: Responsive behavior: **tablet (768–1023px)** — sidebar may collapse to icon rail or drawer; invoice summary stacks below lines or collapsible top panel; **mobile (≤767px)** — single column, hamburger or bottom nav (pick one consistently); touch targets minimum **44×44px** for mobile nav and primary actions.
+UX-DR16: **Feedback patterns:** toast for save, status change, PDF ready (avoid duplicate toasts); API errors mapped to **short actionable French messages** using Nest error `code` when available; field-level validation with non-invalid values preserved; PDF button shows explicit in-progress state (e.g. "Génération en cours…"); success feedback professional, not gimmicky.
+UX-DR17: **Button hierarchy:** one **primary** per view for main forward action (Enregistrer, Générer le PDF, Créer une facture); secondary for safe alternatives; destructive (Annuler la facture, Supprimer) always with Dialog + destructive token.
+UX-DR18: **French UI:** all user-visible strings in French; dates and numbers displayed with French locale via `Intl` while API remains UTC ISO strings per architecture.
+UX-DR19: **Honest compliance framing:** optional fields (e.g. SIRET, VAT number) labeled optional when product defers them; copy must not imply legal certification beyond implemented rules (inline helpers or links to README as agreed).
+UX-DR20: **Feature components must not import raw `@radix-ui/*` directly**—only wrapped components from `src/components/ui/` to enforce tokens and interaction consistency.
+UX-DR21: **Journey A empty states:** Clients and Services lists must CTA toward creation before blocking New Invoice; optional check for **seller profile completeness** before PDF with inline prompt to complete profile.
+UX-DR22: **Journey B (Mehdi):** invoice detail shows only legal actions per status; illegal transitions hidden or disabled with explanation; after correction path, user can regenerate PDF and verify parity with screen.
 ```
 
 ### FR Coverage Map
 
-FR1: Epic 1 — Account registration  
-FR2: Epic 1 — Sign-in  
-FR3: Epic 1 — Sign-out  
-FR4: Epic 1 (foundation); enforced in Epics 2–5 — Tenant isolation on every domain API  
-FR5: Epic 1 — Seller profile maintenance  
-FR6: Epic 1 & 5 — Seller on invoices/PDFs  
-FR7: Epic 2 — Create client  
-FR8: Epic 2 — List clients  
-FR9: Epic 2 — Update client  
-FR10: Epic 2 — Delete client  
-FR11: Epic 3 — Create service  
-FR12: Epic 3 — List services  
-FR13: Epic 3 — Update service  
-FR14: Epic 3 — Delete service  
-FR15: Epic 4 — Create invoice for one client  
-FR16: Epic 4 — Add invoice lines from services and quantities  
-FR17: Epic 4 — Remove/adjust lines when status allows  
-FR18: Epic 4 — Compute HT, VAT, TTC per V1 rules  
-FR19: Epic 4 — View HT, VAT, TTC before PDF  
-FR20: Epic 4 — Status transitions  
-FR21: Epic 4 — List invoices  
-FR22: Epic 4 — Invoice detail  
-FR23: Epic 4 — Persisted totals consistent with lines  
-FR24: Epic 5 — Generate PDF  
-FR25: Epic 5 — Download PDF  
-FR26: Epic 5 — PDF mandatory content set for V1  
-FR27: Epic 5 — PDF parity with application data  
-FR28: Epic 4 — EUR for monetary amounts  
-FR29: Epics 1–4 — Validation and clear feedback on forms/API  
-FR30: Epic 6 — Honest copy and documentation (no over-claiming)  
-FR31: Epic 6 — Version/release identifier for reviewers  
+| FR | Epic | Notes |
+|----|------|--------|
+| FR1 | 1 | Registration |
+| FR2 | 1 | Login |
+| FR3 | 1 | Logout |
+| FR4 | 1 (+ all) | Tenant isolation enforced on every domain story |
+| FR5–FR6 | 1 | Seller profile; PDF consumption in Epic 5 |
+| FR7–FR10 | 2 | Clients CRUD |
+| FR11–FR14 | 3 | Services CRUD |
+| FR15–FR23, FR28–FR30 | 4 | Invoices lifecycle, amounts, validation, copy |
+| FR24–FR27 | 5 | PDF generation and parity |
+| FR31 | 1 | Release / version identifier |
+| FR34–FR40 | 6 | CSV exports + dashboard V2 |
+| FR32–FR33, FR41–FR42 | 7 | Email + logo V2 |
+| FR43 | 8 | Cache + invalidation V2 |
+
+**UX-DR coverage:** DR1–DR3, DR8–DR10, DR12–DR20 (shell, themes, a11y baseline) → Epic 1 Story 1.7 and cross-cutting UI stories. DR4–DR7, DR10–DR11, DR21–DR22 → Epics 4–5. DR8 ResourceEmptyState → Epics 2–4 lists.
+
+**NFR coverage:** Security (S1–S4), HTTPS, authz → Epics 1–5 and 7. Performance P1/P3 → Epics 4–5, 8. P2/SC1 load test → documented in Epic 8 / pipeline stories. A1 → UI stories Epics 1–5. I2, C*, O*, G* → Epics 7–8.
 
 ## Epic List
 
-### Epic 1: Account, Session, and Seller Profile
-
-After this epic, the user can register, sign in, sign out, and maintain seller identity for invoicing; tenant isolation and auth guards are established for all later domains.
-
-**FRs covered:** FR1, FR2, FR3, FR4 (foundation), FR5, FR6 (data available for later invoice/PDF epics)
-
-**NFR / architecture touched:** NFR5, NFR6; starters; PostgreSQL + User; JWT; unified error shape; bcrypt/Argon2.
-
-**UX-DR touched:** UX-DR1, UX-DR2, UX-DR3, UX-DR4 (shell), UX-DR10, UX-DR11 (where amounts appear later), UX-DR12, UX-DR14, UX-DR15, UX-DR17, UX-DR18, UX-DR19, UX-DR20.
+### Epic 1: Account, Session & Seller Identity
+Enable signup, login, logout, tenant-safe access, seller profile for invoices/PDFs, and a visible release identifier for reviewers.
+**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR31
 
 ### Epic 2: Client Directory
-
-The user can create, list, update, and delete clients (name, email, company, address) scoped to their account.
-
+Manage the freelancer’s clients (create, list, update, delete) with PRD fields.
 **FRs covered:** FR7, FR8, FR9, FR10
 
-**NFR / architecture:** NFR6; tenant `userId` on clients; decimal/money rules N/A for clients; validation DTOs.
-
-**UX-DR touched:** UX-DR9, UX-DR11, UX-DR12, UX-DR14, UX-DR15, UX-DR16, UX-DR17, UX-DR18, UX-DR23.
-
-### Epic 3: Billable Services (Prestations)
-
-The user can define and manage services (title, hourly HT rate) for reuse on invoices.
-
+### Epic 3: Service Catalog (Prestations)
+Create and maintain reusable services (title, hourly rate) for invoice lines.
 **FRs covered:** FR11, FR12, FR13, FR14
 
-**NFR / architecture:** NFR6; non-float storage for rates; tenant scoping.
+### Epic 4: Invoicing — Lines, Totals & Statuses
+Create invoices, edit lines when allowed, compute and persist HT/VAT/TTC, manage statuses with explicit rules, list and detail views, EUR and honest compliance UX.
+**FRs covered:** FR15–FR23, FR28, FR29, FR30
 
-**UX-DR touched:** UX-DR9, UX-DR11, UX-DR12, UX-DR14, UX-DR15, UX-DR16, UX-DR17, UX-DR18, UX-DR23.
+### Epic 5: Invoice PDF Aligned to Data
+Generate and download PDF invoices from server-side persisted data with loading feedback and screen–PDF parity.
+**FRs covered:** FR24, FR25, FR26, FR27 (uses FR5–FR6 from Epic 1)
 
-### Epic 4: Invoices — Lines, Amounts, and Status
+### Epic 6: Insights & Data Exports (V2)
+Deliver dashboard KPIs from stored invoices and UTF-8 CSV exports for clients and invoices with a documented column contract.
+**FRs covered:** FR34, FR35, FR36, FR37, FR38, FR39, FR40
 
-The user can build invoices with lines, see HT/VAT/TTC in EUR, persist consistent totals, and move through statuses per the product transition matrix.
+### Epic 7: Client Delivery & PDF Branding (V2)
+Send invoices by email with PDF attachment and custom message; upload logo and render it on PDFs without obscuring mandatory fields.
+**FRs covered:** FR32, FR33, FR41, FR42
 
-**FRs covered:** FR15, FR16, FR17, FR18, FR19, FR20, FR21, FR22, FR23, FR28
-
-**NFR / architecture:** NFR6; server-side totals; status matrix documented; snapshot semantics if product defines them.
-
-**UX-DR touched:** UX-DR5, UX-DR6, UX-DR7, UX-DR8, UX-DR9, UX-DR11, UX-DR12, UX-DR14, UX-DR15, UX-DR16, UX-DR17, UX-DR18, UX-DR20, UX-DR21, UX-DR22.
-
-### Epic 5: Invoice PDF and Document Parity
-
-The user can generate and download a PDF that matches persisted invoice data (seller, client, lines, totals for V1).
-
-**FRs covered:** FR24, FR25, FR26, FR27 (FR6 completion on PDF output)
-
-**NFR / architecture:** PDF only in Nest from persisted graph + `userId`; NFR3 UI feedback.
-
-**UX-DR touched:** UX-DR11, UX-DR13, UX-DR14, UX-DR15, UX-DR18.
-
-### Epic 6: Quality, Deployment, and Traceability
-
-The product is runnable via Docker, deployed through CI/CD with staging gates and load-test evidence, documented for evaluators, and labeled with an honest legal/scope posture.
-
-**FRs covered:** FR30, FR31
-
-**NFR / architecture:** NFR1 (budget + report), NFR2, NFR4, NFR7, NFR8, NFR9 (notes), NFR10 (verification), NFR11; OpenAPI published; Git flow; secrets hygiene.
-
-**UX-DR touched:** UX-DR20 (copy in app/docs); any remaining a11y checklist UX-DR18 on key routes.
+### Epic 8: Cache, Freshness & Observability (V2)
+Apply documented Redis caching for lists/dashboard with invalidation/read-your-writes; structured logs; reachable monitoring; multi-instance-safe cache; V2 release and ops hygiene.
+**FRs covered:** FR43 — **NFRs:** NFR-C1, NFR-C2, NFR-O1, NFR-O2, NFR-O3, NFR-G1, NFR-G2
 
 ---
 
-## Epic 1: Account, Session, and Seller Profile
+## Epic 1: Account, Session & Seller Identity
 
-Users can onboard, authenticate, end their session, and maintain seller fields required for V1 invoices; every subsequent module reuses tenant isolation established here.
+Visitors and freelancers can register, authenticate, sign out, maintain seller identity for billing documents, see deployment version, and land in a navigable app shell with theming and French UI baseline.
 
-### Story 1.1: Backend — NestJS bootstrap, PostgreSQL, and user registration
+### Story 1.1: Visitor registration with email and password
 
-As a visitor,  
-I want to register with email and password,  
-So that I obtain an account to use FreelanceFlow.
-
-**Acceptance Criteria:**
-
-**Given** the NestJS API is running with PostgreSQL and a `User` model (or equivalent) scoped for future tenant fields  
-**When** I submit valid registration data to `POST /api/v1/auth/register` (or team path)  
-**Then** my password is stored using bcrypt or Argon2 and I receive a success response without leaking the hash  
-**And** duplicate email is rejected with the unified JSON error shape (`statusCode`, `message`, optional `code`, `details`)  
-**And** unit tests cover success and validation failures (FR1, NFR5, NFR6 for this endpoint).
-
-### Story 1.2: Backend — Login, JWT access and refresh, and authenticated context
-
-As a registered user,  
-I want to sign in and receive tokens,  
-So that I can call protected APIs securely.
+As a visitor,
+I want to create an account with email and password,
+So that I can access FreelanceFlow with my own isolated workspace.
 
 **Acceptance Criteria:**
 
-**Given** a registered user  
-**When** they authenticate with correct credentials  
-**Then** they receive a short-lived access JWT and a refresh strategy (httpOnly cookie or documented secure storage) per architecture  
-**And** invalid credentials return 401 with the unified error body without revealing which field failed  
-**And** an auth guard extracts `userId` (or `accountId`) for downstream handlers (FR2, NFR5, NFR6).
+**Given** a valid email and password meeting the team policy,
+**When** I submit the registration form,
+**Then** a user record is created with a salted password hash and I can sign in,
+**And** validation errors are shown in French with field-level messages without clearing unrelated fields (FR1, FR29, NFR-S2, UX-DR16–DR18).
 
-### Story 1.3: Backend — Logout and session end semantics
+**Given** an email already registered,
+**When** I submit registration,
+**Then** the API returns a structured error and the UI shows a clear French message without leaking which field failed beyond “already used” policy (NFR-S2).
 
-**As an authenticated user,**  
-**I want to sign out,**  
-**So that my session ends on this device as expected for V1.**
+### Story 1.2: Registered user sign-in
 
-**Acceptance Criteria:**
-
-**Given** an authenticated session  
-**When** the user invokes logout (server endpoint and/or client clearing per team decision documented in README)  
-**Then** refresh tokens are invalidated or rotated per chosen strategy, or client clears stored tokens safely  
-**And** subsequent protected calls fail until login again (FR3).
-
-### Story 1.4: Backend — Seller profile read and update
-
-As an authenticated user,  
-I want to read and update my seller information used on invoices,  
-So that my documents show correct identity for the V1 field set.
+As a registered user,
+I want to sign in with my credentials,
+So that I obtain an access token (and refresh strategy per architecture) for API calls.
 
 **Acceptance Criteria:**
 
-**Given** an authenticated user  
-**When** they `GET` and `PATCH` seller profile fields defined for V1 (team documents mandatory vs optional identifiers such as SIRET/TVA)  
-**Then** only their own profile is returned or updated (404/403 for others)  
-**And** validation errors use the unified error JSON and field-level `details` where applicable (FR5, FR6 data ready, FR4, FR29).
+**Given** correct credentials,
+**When** I submit login,
+**Then** I receive a short-lived access token and the documented refresh mechanism is applied (httpOnly cookie or documented storage) (FR2, NFR-S2).
 
-### Story 1.5: Frontend — Next.js bootstrap, design system tokens, and auth screens
+**Given** wrong credentials,
+**When** I submit login,
+**Then** I see a generic or policy-approved French error and no stack trace or secret is exposed (NFR-S2, S1 in non-local).
 
-As a visitor or user,  
-I want French-language registration and login screens with accessible forms,  
-So that I can use the app without confusion or blocked input.
+### Story 1.3: Authenticated sign-out
 
-**Acceptance Criteria:**
-
-**Given** a new Next.js app (App Router, `src/app`) with Tailwind and Radix primitives wrapped only in `src/components/ui/` (UX-DR23)  
-**When** the user opens register and login pages  
-**Then** copy is in French, labels are visible, focus rings use the `ring` token, and theme tokens (`default`, `ocean`, `forest`, `high-contrast`) switch via `data-theme` with `localStorage` persistence (UX-DR1, UX-DR2, UX-DR10, UX-DR12, UX-DR14, UX-DR18, UX-DR19, UX-DR20)  
-**And** optional `data-appearance` and `prefers-reduced-motion` behave per UX-DR3  
-**And** API errors from Nest are mapped to short French messages; non-invalid fields retain values on failure (UX-DR12, FR29).
-
-### Story 1.6: Frontend — Authenticated shell, navigation, profile page, and sign out
-
-As an authenticated user,  
-I want a persistent sidebar, profile access, and sign out,  
-So that I can move toward invoicing tasks with clear navigation.
+As an authenticated user,
+I want to end my session from the product,
+So that my tokens are invalidated or cleared per team policy on shared devices (FR3).
 
 **Acceptance Criteria:**
 
-**Given** an authenticated user  
-**When** they land in the app after login  
-**Then** the shell shows Direction 1: left sidebar with Factures, Clients, Prestations, Profil vendeur (routes may 404 or placeholder until later epics), active state, account/sign-out, `main`/`nav` landmarks (UX-DR4, UX-DR17 touch targets)  
-**And** the seller profile page uses the profile API from Story 1.4 with validation feedback (FR5, FR3 via sign out control)  
-**And** ThemeSwitcher does not reset form state when used (UX-DR10).
+**Given** I am signed in,
+**When** I choose “Déconnexion”,
+**Then** refresh/session state is cleared client-side and server-side invalidation is applied if the team implements a blocklist/rotation (FR3, NFR-S2).
+
+### Story 1.4: Tenant isolation on protected APIs
+
+As a product owner,
+I want every domain read/write scoped by authenticated user,
+**So that** FR4 is enforced server-side, not only in the UI (FR4, NFR-S3).
+
+**Acceptance Criteria:**
+
+**Given** two users A and B with separate data,
+**When** user A calls any protected endpoint with user B’s resource id,
+**Then** the API returns 404 or 403 and never returns B’s payload (FR4, NFR-S3).
+
+**Given** automated tests,
+**When** CI runs,
+**Then** at least one test proves forbidden cross-tenant access for a representative resource introduced so far (users/profile) (NFR-S3).
+
+### Story 1.5: Seller profile for invoice identity
+
+As an authenticated user,
+I want to maintain my seller details used on invoices and PDFs,
+**So that** issued documents show correct freelancer identity within the V1 field set (FR5, FR6).
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated,
+**When** I open “Profil vendeur” and save valid data,
+**Then** values persist and are returned on subsequent GET; optional fields (e.g. SIRET/TVA) are labeled optional if deferred (FR5, FR6, FR29, UX-DR19).
+
+**Given** missing required seller fields per product rules,
+**When** I save,
+**Then** I see French validation messages tied to fields (FR29, UX-DR14).
+
+### Story 1.6: Release or version identifier for reviewers
+
+As a reviewer,
+I want to see which release is deployed,
+**So that** I can map production behaviour to a tag or build (FR31).
+
+**Acceptance Criteria:**
+
+**Given** deployed staging/production,
+**When** I read README or hit the documented version endpoint or UI footer,
+**Then** I see a non-empty version/build string aligned with the team’s tagging scheme (FR31).
+
+### Story 1.7: Authenticated app shell, themes, and navigation chrome
+
+As an authenticated user,
+I want a persistent sidebar, theme presets, and accessible chrome,
+**So that** navigation matches Design Direction 1 and supports future feature routes (UX-DR1–DR3, DR8–DR10, DR12–DR20, NFR-A1).
+
+**Acceptance Criteria:**
+
+**Given** I am authenticated,
+**When** I load any in-app route,
+**Then** I see a left sidebar with entries for Factures, Clients, Prestations, Profil vendeur with active state; layout uses semantic tokens only in feature areas (UX-DR1–DR3, DR20).
+
+**Given** I use the theme switcher,
+**When** I select default, ocean, forest, or high-contrast,
+**Then** `data-theme` updates, choice persists in `localStorage`, and focus rings remain visible (UX-DR2, DR9, DR14).
+
+**Given** viewport below `lg`,
+**When** I resize the window,
+**Then** navigation follows the documented responsive pattern (drawer/hamburger/icon rail) with ≥44px touch targets for primary nav controls (UX-DR15).
 
 ---
 
 ## Epic 2: Client Directory
 
-Users maintain a private client directory for invoicing.
+Freelancers can maintain their client records used for invoicing.
 
-### Story 2.1: Backend — Client entity and CRUD API with tenant isolation
+### Story 2.1: Create client with required fields
 
-As an authenticated user,  
-I want my clients stored and accessed only under my account,  
-So that no other user can see or change them.
-
-**Acceptance Criteria:**
-
-**Given** PostgreSQL and migrations adding `clients` with `userId`  
-**When** I create, list, read, update, and delete clients via `/api/v1/clients`  
-**Then** every query filters by authenticated `userId` and cross-tenant access returns 404 (FR7–FR10, FR4, NFR6)  
-**And** required fields (name, email, company, address) are validated with unified errors (FR29)  
-**And** unit tests prove isolation between two users.
-
-### Story 2.2: Frontend — Client list and empty state
-
-As an authenticated user,  
-I want to see my clients or a helpful empty state,  
-So that I know how to add the first one.
+As an authenticated user,
+I want to create a client with name, email, company, and address,
+**So that** I can bill that client later (FR7, FR29, UX-DR8, DR10, DR18).
 
 **Acceptance Criteria:**
 
-**Given** the user opens the Clients section  
-**When** they have no clients  
-**Then** `ResourceEmptyState` shows French headline, one sentence, and a primary CTA to create (UX-DR9, UX-DR20)  
-**When** they have clients  
-**Then** the list loads with skeleton or spinner (UX-DR15) and supports navigation to detail/edit (UX-DR16).
+**Given** valid field values,
+**When** I submit the create form,
+**Then** the client is stored with my `userId` and appears in the list (FR7, FR4).
 
-### Story 2.3: Frontend — Create and edit client
+**Given** invalid or missing required values,
+**When** I submit,
+**Then** I see French field errors and the API returns structured validation details (FR29, NFR-S3).
 
-As an authenticated user,  
-I want to create and edit a client,  
-So that my directory stays accurate.
+### Story 2.2: List my clients
 
-**Acceptance Criteria:**
-
-**Given** client forms  
-**When** the user submits valid data  
-**Then** success is confirmed (toast or inline per UX-DR15) and the list updates  
-**When** validation fails  
-**Then** field-level messages, `aria-invalid`, and preserved valid fields apply (UX-DR12, FR29)  
-**And** one clear primary action per view (UX-DR14).
-
-### Story 2.4: Frontend — Delete client with confirmation
-
-As an authenticated user,  
-I want to delete a client with confirmation,  
-So that I do not remove data by mistake.
+As an authenticated user,
+I want to see a list of my clients,
+**So that** I can open or edit them quickly (FR8, UX-DR8, DR10).
 
 **Acceptance Criteria:**
 
-**Given** a client row or detail  
-**When** the user chooses delete  
-**Then** a Radix `Dialog` asks confirmation in French with destructive styling (UX-DR14, FR10)  
-**And** API errors map to French feedback; list refreshes on success.
+**Given** I have zero clients,
+**When** I open Clients,
+**Then** I see `ResourceEmptyState` with one primary CTA to create a client (FR8, UX-DR8, DR21).
+
+**Given** I have clients,
+**When** I open Clients,
+**Then** I see a table or list with aligned text and tabular numbers where amounts are not yet applicable—company/name readable (FR8, UX-DR12–DR13).
+
+### Story 2.3: Update an existing client
+
+As an authenticated user,
+I want to edit a client’s information,
+**So that** billing details stay current (FR9, FR29).
+
+**Acceptance Criteria:**
+
+**Given** a client I own,
+**When** I save edits,
+**Then** persisted fields update and list/detail reflect changes (FR9, FR4).
+
+### Story 2.4: Delete a client
+
+As an authenticated user,
+I want to delete a client I no longer need,
+**So that** my directory stays accurate (FR10, UX-DR17).
+
+**Acceptance Criteria:**
+
+**Given** a client I own with no blocking business rules (or documented constraint if invoices reference them),
+**When** I confirm deletion in a destructive dialog,
+**Then** the client is removed for my account only and others’ data is unaffected (FR10, FR4, UX-DR7, DR17).
 
 ---
 
-## Epic 3: Billable Services (Prestations)
+## Epic 3: Service Catalog (Prestations)
 
-Users maintain reusable services with hourly HT rates.
+Freelancers define reusable services to speed invoice line entry.
 
-### Story 3.1: Backend — Service entity and CRUD API
+### Story 3.1: Create service with title and hourly rate
 
-As an authenticated user,  
-I want services stored with correct monetary precision,  
-So that invoice lines can reuse reliable rates.
-
-**Acceptance Criteria:**
-
-**Given** a `services` (or `prestations`) table with `userId`, title, hourly rate in decimal/numeric (no float)  
-**When** CRUD operations run on `/api/v1/services` (or chosen plural)  
-**Then** tenant isolation matches Story 2.1 patterns (FR11–FR14, FR4, NFR6, architecture money rule).
-
-### Story 3.2: Frontend — Service list and empty state
-
-As an authenticated user,  
-I want to list services or see an empty state,  
-So that I add prestations before invoicing.
+As an authenticated user,
+I want to create a service with title and hourly HT rate,
+**So that** I can reuse it on invoices (FR11, FR28, FR29, UX-DR8, DR10).
 
 **Acceptance Criteria:**
 
-**Given** the Prestations section  
-**When** the catalog is empty  
-**Then** `ResourceEmptyState` guides creation (UX-DR9)  
-**When** services exist  
-**Then** hourly rates display with EUR formatting and tabular figures (UX-DR11, UX-DR19).
+**Given** valid title and non-float monetary rate storage,
+**When** I save,
+**Then** the service is persisted scoped to my user (FR11, FR4, architecture money rules).
 
-### Story 3.3: Frontend — Create and edit service
+### Story 3.2: List my services
 
-As an authenticated user,  
-I want to create and edit a service,  
-So that titles and rates stay current.
+As an authenticated user,
+I want to list my services,
+**So that** I can manage my catalog (FR12, UX-DR8).
 
 **Acceptance Criteria:**
 
-**Given** service forms in French  
-**When** submitting valid data  
-**Then** feedback follows UX-DR12, UX-DR14, UX-DR15  
-**And** invalid rate or title shows field errors without clearing unrelated inputs (FR29).
+**Given** no services,
+**When** I open Prestations,
+**Then** empty state CTA guides creation before invoicing (FR12, UX-DR8, DR21).
 
-### Story 3.4: Frontend — Delete service with confirmation
+### Story 3.3: Update a service
 
-As an authenticated user,  
-I want to delete a service safely,  
-So that obsolete offerings are removed.
+As an authenticated user,
+I want to edit a service,
+**So that** rates and titles stay accurate (FR13).
 
 **Acceptance Criteria:**
 
-**Given** a delete action  
-**When** confirmed in a destructive dialog  
-**Then** the service is removed and the list updates (FR14, UX-DR14).
+**Given** a service I own,
+**When** I save changes,
+**Then** updates persist and existing invoices are not silently rewritten (snapshot semantics documented in UI helper if lines copy service data) (FR13, UX-DR optional helper).
+
+### Story 3.4: Delete a service
+
+As an authenticated user,
+I want to delete a service,
+**So that** obsolete offerings are removed (FR14, UX-DR17).
+
+**Acceptance Criteria:**
+
+**Given** a service I own and deletion policy (blocked if referenced by invoices, or soft-delete—team documented),
+**When** I confirm delete,
+**Then** behaviour matches the rule without cross-tenant side effects (FR14, FR4, UX-DR17).
 
 ---
 
-## Epic 4: Invoices — Lines, Amounts, and Status
+## Epic 4: Invoicing — Lines, Totals & Statuses
 
-Users create invoices with lines, see HT/VAT/TTC in EUR, and manage lifecycle per transition rules.
+Freelancers create invoices, manage lines and French VAT totals, transition statuses with clear rules, and navigate list/detail with trustworthy figures.
 
-### Story 4.1: Backend — Create draft invoice linked to one client
+### Story 4.1: Create draft invoice linked to one client
 
-As an authenticated user,  
-I want to create an invoice draft for a client,  
-So that I can add lines next.
-
-**Acceptance Criteria:**
-
-**Given** `invoices` with `userId`, `clientId` referencing the user’s client, status default `draft`  
-**When** `POST` create invoice with valid `clientId`  
-**Then** the invoice belongs to the current user only; foreign keys reject other users’ clients (FR15, FR4, FR20 initial state)  
-**And** OpenAPI/DTOs document the payload.
-
-### Story 4.2: Backend — Invoice lines and persisted HT/VAT/TTC
-
-As an authenticated user,  
-I want lines and totals stored consistently,  
-So that the UI and PDF use one source of truth.
+As an authenticated user,
+I want to create a new invoice draft for a selected client,
+**So that** I can add lines next (FR15, FR4, UX-DR21).
 
 **Acceptance Criteria:**
 
-**Given** invoice lines referencing services and quantities (and VAT rules defined for V1)  
-**When** lines are added, updated, or removed while status allows editing  
-**Then** HT, VAT, and TTC are computed server-side and persisted in decimal-safe types; totals reconcile with line sums (FR16, FR17, FR18, FR23, FR28)  
-**And** attempts to edit when status forbids it return a clear error with unified shape (FR20 prerequisite).
+**Given** at least one client,
+**When** I create an invoice,
+**Then** a draft exists with `userId`, `clientId`, initial status `draft`, and I can open its detail page (FR15).
 
-### Story 4.3: Backend — Invoice list, detail, and status transitions
+**Given** no clients,
+**When** I attempt “Nouvelle facture”,
+**Then** I am guided to create a client first (UX-DR21).
 
-As an authenticated user,  
-I want to list and open invoices and change status per rules,  
-So that I can run the billing lifecycle.
+### Story 4.2: Invoice line editor with service pick and EUR display
 
-**Acceptance Criteria:**
-
-**Given** a documented status transition matrix (draft/sent/paid/cancelled)  
-**When** the user lists and fetches invoices and PATCHes status  
-**Then** illegal transitions are rejected with explicit errors; legal ones persist (FR20, FR21, FR22)  
-**And** `GET` by id returns 404 for other users’ invoices (FR4).
-
-### Story 4.4: Frontend — Invoice list, empty state, and navigation
-
-As an authenticated user,  
-I want to browse invoices with sorting basics,  
-So that I find documents quickly.
+As an authenticated user,
+I want to add, remove, reorder, and edit lines with optional service pick,
+**So that** amounts reflect my sold work (FR16, FR17, FR28, UX-DR4–DR5, DR10, DR13).
 
 **Acceptance Criteria:**
 
-**Given** the Factures section  
-**When** no invoices exist  
-**Then** `ResourceEmptyState` points to creating an invoice (UX-DR9, UX-DR21)  
-**When** invoices exist  
-**Then** minimal sort by date or status is available if scoped (UX-DR16) and rows link to detail routes (deep links) (UX-DR16, FR21).
+**Given** a draft invoice,
+**When** I add a line from a service,
+**Then** description and unit HT prefill and I can adjust quantity/hours per rules (FR16, UX-DR5).
 
-### Story 4.5: Frontend — Invoice editor shell, client selection, draft save, and prerequisite prompts
+**Given** a non-draft status that forbids edits,
+**When** I view the editor,
+**Then** controls are read-only with an explanation (FR17, FR20 rules, UX-DR5, DR22).
 
-As an authenticated user,  
-I want to start an invoice and save a draft,  
-So that I can complete lines afterward.
+### Story 4.3: Server-side HT, VAT, and TTC computation and persistence
 
-**Acceptance Criteria:**
-
-**Given** create/edit invoice page  
-**When** seller profile or client is missing  
-**Then** inline prompts guide to Profil vendeur or Clients before blocking (UX-DR21)  
-**When** the user picks a client and saves  
-**Then** layout follows UX-DR5 at `lg+` (two columns reserved for lines + sticky summary) and stacks below `lg`  
-**And** French copy, primary hierarchy, and error mapping apply (UX-DR12, UX-DR14, FR15, FR29).
-
-### Story 4.6: Frontend — Invoice line table, service picker, and totals panel
-
-As an authenticated user,  
-I want to edit lines and see HT/VAT/TTC from the server,  
-So that I trust amounts before PDF.
+As an authenticated user,
+I want totals computed and stored on the server,
+**So that** UI and future PDF use one source of truth (FR18, FR23, FR28, NFR-S3).
 
 **Acceptance Criteria:**
 
-**Given** `InvoiceLineTable` / editor and `InvoiceTotalsPanel` with heading “Synthèse” (UX-DR7)  
-**When** the user adds/removes/reorders lines, picks a service for prefilled description and unit HT, and enters quantities  
-**Then** displayed amounts use `MoneyDisplay` with tabular nums and EUR (UX-DR6, UX-DR11)  
-**And** read-only mode applies when status disallows edits, with helper text (UX-DR6, FR17)  
-**And** short inline help explains snapshot semantics if backend copies catalog values at line creation (UX-DR22)  
-**And** after save/refetch, totals match API (FR19, FR23, UX-DR5).
+**Given** saved line inputs,
+**When** the server recalculates,
+**Then** HT, VAT, and TTC match team-defined French VAT rules and are persisted using non-float types (FR18, FR23, architecture).
 
-### Story 4.7: Frontend — Invoice status actions
+**Given** concurrent edits,
+**When** two saves race,
+**Then** behaviour is last-write-wins or version conflict per team choice, documented (FR23).
 
-As an authenticated user,  
-I want actions that match my invoice status,  
-So that I only perform allowed transitions.
+### Story 4.4: Invoice list, detail, sticky totals panel, and responsive layout
+
+As an authenticated user,
+I want list and detail views with a visible HT/VAT/TTC summary,
+**So that** I can trust figures before PDF (FR19, FR21, FR22, UX-DR4, DR6, DR10–DR11).
 
 **Acceptance Criteria:**
 
-**Given** `InvoiceStatusActions`  
-**When** the invoice loads  
-**Then** only allowed transitions render as enabled; disabled actions expose tooltip or helper explaining why (UX-DR8, FR20)  
-**And** destructive actions (e.g. cancel) use confirmation dialog in French (UX-DR8, UX-DR14)  
-**And** status badge shows text plus color not color alone (UX-DR18)  
-**And** mutations show loading and toasts on success (UX-DR15).
+**Given** saved invoice data,
+**When** I open detail on desktop (`lg+`),
+**Then** I see two columns: lines + sticky “Synthèse” with HT/VAT/TTC, EUR, and status badge with text label (FR19, FR22, UX-DR4, DR6, DR11).
+
+**Given** a narrow viewport,
+**When** I open the same invoice,
+**Then** summary stacks under lines per documented responsive behaviour (UX-DR4, DR15).
+
+### Story 4.5: Invoice status transitions with explicit matrix
+
+As an authenticated user,
+I want to transition status among draft, sent, paid, cancelled per published rules,
+**So that** corrections follow Mehdi’s journey safely (FR20, UX-DR7, DR11, DR22).
+
+**Acceptance Criteria:**
+
+**Given** the documented transition matrix (e.g. draft→sent, sent→paid, allowed corrections),
+**When** I trigger an allowed transition,
+**Then** status updates and illegal actions are disabled or hidden with helper text (FR20, UX-DR7, DR22).
+
+**Given** a destructive transition (e.g. cancel),
+**When** I confirm in a dialog,
+**Then** status updates accordingly with French copy (UX-DR7, DR17).
+
+### Story 4.6: Validation feedback and honest compliance copy on invoice flows
+
+As an authenticated user,
+I want clear validation and scope-honest messaging,
+**So that** I do not over-trust legal coverage (FR29, FR30, UX-DR16, DR19).
+
+**Acceptance Criteria:**
+
+**Given** server validation errors on save,
+**When** the API returns `details`,
+**Then** the UI maps codes to short French messages and preserves valid field values (FR29, UX-DR16).
+
+**Given** invoice or seller areas referencing legal fields,
+**When** I read helper text,
+**Then** it states implemented vs optional identifiers per product decision (FR30, UX-DR19).
 
 ---
 
-## Epic 5: Invoice PDF and Document Parity
+## Epic 5: Invoice PDF Aligned to Data
 
-Users download PDFs that mirror persisted invoices.
+Users download PDF invoices generated in Nest from persisted rows, with visible progress and parity to the UI.
 
-### Story 5.1: Backend — PDF generation from persisted invoice
+### Story 5.1: Backend PDF generation from persisted invoice
 
-As an authenticated user,  
-I want the server to build my PDF from stored data,  
-So that the file matches what I saved.
-
-**Acceptance Criteria:**
-
-**Given** Nest PDF module (e.g. HTML template + Puppeteer or PDFKit)  
-**When** `GET` or `POST /api/v1/invoices/:id/pdf` is called with a valid token  
-**Then** the invoice is loaded by id and `userId`; other users get 404  
-**And** the PDF includes seller, client, date, lines, totals per V1 minimum set (FR24, FR26, FR27, FR6)  
-**And** amounts match persisted values in automated tests (parity)  
-**And** idempotency expectations are documented (architecture).
-
-### Story 5.2: Frontend — PDF trigger, loading state, and download
-
-As an authenticated user,  
-I want visible progress and a reliable download,  
-So that I know generation succeeded.
+As an authenticated user,
+I want the server to build a PDF from my invoice id,
+**So that** amounts cannot diverge from the database (FR24, FR26, architecture PDF module).
 
 **Acceptance Criteria:**
 
-**Given** the invoice detail page  
-**When** the user triggers PDF generation  
-**Then** the button shows “Génération en cours…” or equivalent and disabled/loading state (UX-DR13, NFR3)  
-**And** success enables download or opens blob; failure shows retry and French error (UX-DR13, UX-DR12)  
-**And** `aria-live` (or equivalent) announces result for assistive tech (UX-DR13, UX-DR18)  
-**And** primary button hierarchy respected (UX-DR14).
+**Given** an invoice I own,
+**When** I call the PDF endpoint,
+**Then** Nest loads invoice graph filtered by `userId` and streams PDF bytes; other users’ ids return 404/403 (FR24, FR4, architecture).
+
+**Given** Puppeteer/PDFKit choice,
+**When** generation runs,
+**Then** implementation follows architecture (HTML template or programmatic) without storing PDF in Redis (architecture).
+
+### Story 5.2: Download PDF with in-progress UI
+
+As an authenticated user,
+I want to download the PDF with clear progress,
+**So that** I know generation is working (FR25, NFR-P3, UX-DR16).
+
+**Acceptance Criteria:**
+
+**Given** I trigger “Générer le PDF”,
+**When** generation takes noticeable time,
+**Then** the button shows an explicit in-progress state and disables double-submit until completion or error (FR25, NFR-P3, UX-DR16).
+
+**Given** success,
+**When** the file is ready,
+**Then** the browser downloads or opens the file per UX choice (FR25).
+
+### Story 5.3: PDF content parity and seller inclusion
+
+As an authenticated user,
+I want the PDF to match the on-screen invoice and include seller and client blocks,
+**So that** I can send a credible document (FR26, FR27, FR6, UX-DR21).
+
+**Acceptance Criteria:**
+
+**Given** identical invoice data,
+**When** I compare PDF to detail view,
+**Then** client identity, line text, quantities, HT/VAT/TTC match persisted values (FR27).
+
+**Given** incomplete seller profile when required for PDF,
+**When** I attempt PDF,
+**Then** I see a blocking message with link to Profil vendeur (FR6, UX-DR21).
+
+**Given** automated tests,
+**When** CI runs,
+**Then** at least one parity check exists (hash or golden snapshot) for a fixture invoice (FR27).
 
 ---
 
-## Epic 6: Quality, Deployment, and Traceability
+## Epic 6: Insights & Data Exports (V2)
 
-Stakeholders can run, verify, and grade the shipped product with documented evidence.
+Freelancers export CSV data and view dashboard KPIs computed from stored invoices per measurement appendix defaults unless overridden.
 
-### Story 6.1: Dockerfiles and local full stack
+### Story 6.1: Export clients to UTF-8 CSV
 
-As a developer,  
-I want Dockerfiles and compose (or documented equivalent) for frontend and backend,  
-So that anyone can run the full stack locally.
-
-**Acceptance Criteria:**
-
-**Given** each repository  
-**When** images build and compose brings up API, UI, and database  
-**Then** README documents ports, env vars, and `docker compose up` (or equivalent)  
-**And** secrets use `.env.example` only—no secrets in git (NFR5, architecture).
-
-### Story 6.2: CI/CD pipelines and environments
-
-As a team member,  
-I want pipelines that lint, test, build, and deploy,  
-So that staging and production stay predictable.
+As an authenticated user,
+I want to download my clients as CSV,
+**So that** I can use them in spreadsheets (FR34, NFR-S3).
 
 **Acceptance Criteria:**
 
-**Given** GitHub Actions (or chosen CI) per repo  
-**When** pipeline runs on relevant branches  
-**Then** steps include install, lint, format check, tests, build, Docker image build, publish, deploy to **staging** and **production** per team mapping  
-**And** branch strategy `feature/`* → `develop` → `staging` → `main` is documented (PRD technical success).
+**Given** my clients,
+**When** I request export,
+**Then** I receive UTF-8 CSV with documented columns and `export-schema` version in README or API doc (FR34, PRD appendix).
 
-### Story 6.3: Load test on staging with recorded metrics
+### Story 6.2: Export invoices to UTF-8 CSV
 
-As a DevOps engineer,  
-I want load-test results before production promotion,  
-So that we meet course and NFR expectations.
-
-**Acceptance Criteria:**
-
-**Given** staging URL  
-**When** the team runs an agreed load scenario  
-**Then** throughput, latency percentiles, and error rate are recorded and attached to the release gate (NFR2, NFR1, NFR8).
-
-### Story 6.4: README, OpenAPI visibility, release/version identifier, GDPR and scope honesty
-
-As a reviewer,  
-I want URLs, API docs, version, and privacy stance,  
-So that I can validate the assignment quickly.
+As an authenticated user,
+I want to download my invoices as CSV,
+**So that** my accountant can reconcile (FR35, FR4).
 
 **Acceptance Criteria:**
 
-**Given** production (and backend) URLs in README  
-**When** the reviewer opens Swagger/OpenAPI  
-**Then** `/api/v1` resources are documented (FR31 support)  
-**And** the deployed UI or docs expose a version/build identifier (FR31)  
-**And** README or linked notice states GDPR-oriented minimization, retention/deletion stance, and **does not** claim legal certification beyond implemented invoice fields (FR30, NFR7).
+**Given** my invoices,
+**When** I export,
+**Then** amounts and identifiers match stored data and column set is versioned (FR35).
 
-### Story 6.5: Cross-cutting verification — HTTPS, errors, and accessibility on primary routes
+### Story 6.3: Dashboard totals — revenue (paid TTC rules) and invoice count
 
-As a team,  
-I want baseline security and accessibility verified,  
-So that NFR4 and NFR10 are satisfied for V1.
+As an authenticated user,
+I want to see total revenue and invoice count from my data,
+**So that** I understand business volume (FR36, FR37, FR40, PRD measurement defaults).
 
 **Acceptance Criteria:**
 
-**Given** staging/production hosts  
-**When** traffic is inspected  
-**Then** HTTPS is enforced for browser traffic (NFR4)  
-**And** global Nest exception filter yields unified JSON errors if not already complete in earlier stories  
-**And** primary routes (login, invoice detail) pass agreed checks (manual, axe, or Lighthouse as team defines) with focus visible and keyboard order sane (NFR10, UX-DR18).
+**Given** invoices with mixed statuses,
+**When** I open the dashboard,
+**Then** “revenue” uses only **paid** invoices with TTC in EUR per documented attribution date field; count includes all invoices or documented rule (FR36–FR37, FR40, PRD appendix).
+
+### Story 6.4: Dashboard breakdowns by client and by month
+
+As an authenticated user,
+I want revenue by client and by month,
+**So that** I see concentration and seasonality (FR38, FR39, FR40).
+
+**Acceptance Criteria:**
+
+**Given** paid invoices across months and clients,
+**When** I view the dashboard,
+**Then** aggregations use the same rules as Story 6.3 and calendar month in Europe/Paris unless README states UTC (FR38–FR40, PRD appendix).
 
 ---
 
-## Rapport de validation finale (étape 4 — BMAD Create Epics and Stories)
+## Epic 7: Client Delivery & PDF Branding (V2)
 
-*Validation effectuée contre l’inventaire d’exigences et les règles du workflow ; aucun placeholder `{{…}}` restant dans ce document.*
+Freelancers brand PDFs with a logo and send invoices by email with attachments and resilient delivery semantics.
 
-### 1. Couverture des FR
+### Story 7.1: Upload or replace invoice logo
 
+As an authenticated user,
+I want to upload a bounded logo image,
+**So that** my PDFs carry my studio identity (FR41, NFR-S3).
 
-| Statut | Détail                                                                                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OK     | FR1–FR31 chacun mappé dans la carte de couverture et adressé par au moins une story ( références explicites dans les critères d’acceptation où pertinent). |
+**Acceptance Criteria:**
 
+**Given** an image within format/size limits,
+**When** I upload,
+**Then** it stores securely scoped to my user and previews in settings (FR41, FR4).
 
-### 2. Conformité architecture / starters
+**Given** an oversized or invalid file,
+**When** I upload,
+**Then** I see a French validation error (FR29).
 
+### Story 7.2: Render logo on generated PDFs
 
-| Statut | Détail                                                                                                                                                                                                                                                                                                                                         |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OK     | Les starters officiels **NestJS** et **Next.js** sont couverts : **Story 1.1** (API Nest + PostgreSQL + modèle `User` + inscription) et **Story 1.5** (bootstrap Next, tokens, écrans auth). L’intitulé 1.1 regroupe bootstrap backend et première capacité métier pour respecter le principe « tables / entités seulement quand nécessaire ». |
-| Note   | **OpenAPI**, garde-fous tenant, PDF côté Nest, erreurs JSON unifiées : répartis dans les stories 1.x, 4.x, 5.1, 6.5.                                                                                                                                                                                                                           |
+As an authenticated user,
+I want my current logo on PDFs,
+**So that** branding is visible without hiding mandatory invoice content (FR42, FR26).
 
+**Acceptance Criteria:**
 
-### 3. Création incrémentale des données
+**Given** a stored logo,
+**When** I generate PDF,
+**Then** the logo appears in the header area without obscuring mandatory fields (FR42).
 
+### Story 7.3: Send invoice email with PDF attachment and message
 
-| Statut | Détail                                                                                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OK     | `User` → **1.1** ; `clients` → **2.1** ; `services` → **3.1** ; `invoices` / lignes → **4.1–4.2** ; pas de création « toutes les tables » en story unique. |
+As an authenticated user,
+I want to email an invoice to one or more recipients with a message and PDF,
+**So that** clients receive the same file as in-app generation (FR32, FR33, NFR-I2, UX-DR16).
 
+**Acceptance Criteria:**
 
-### 4. Qualité des stories
+**Given** valid recipients and message,
+**When** I send,
+**Then** the PDF bytes are generated from persisted invoice at send time; success is reported only when provider accepts per integration semantics (FR32–FR33).
 
+**Given** a transient provider error,
+**When** the worker retries within documented bounds,
+**Then** at most one automatic retry occurs before surfacing failure (NFR-I2).
 
-| Statut | Détail                                                                                                                                    |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| OK     | Format user story + Given/When/Then ; périmètre compatible avec une session dev agent ; détails techniques (API, isolation, UX) présents. |
+**Given** a permanent failure (bad mailbox),
+**When** send completes,
+**Then** I see a clear non-success French message and no “sent” claim (FR33, NFR-I2).
 
+### Story 7.4: Async email queue and rate limiting hooks
 
-### 5. Structure des epics et dépendances
+As a platform operator,
+I want outbound email via queue and sensible rate limits,
+**So that** API latency stays predictable and abuse is reduced (NFR-I2, architecture mail+queue).
 
+**Acceptance Criteria:**
 
-| Statut | Détail                                                                                                                                                                                             |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OK     | Epics centrés **valeur utilisateur** (pas « couche API seule »). Enchaînement logique : 2 et 3 indépendants entre eux après 1 ; 4 consomme 2–3 ; 5 consomme 4 ; 6 orthogonal (livraison / preuve). |
-| OK     | Au sein de chaque epic, les stories **n.2** s’appuient sur **n.1**, etc., sans dépendre d’une story **future** du même epic.                                                                       |
+**Given** send requests,
+**When** they arrive,
+**Then** jobs enqueue to BullMQ/Redis and credentials stay in environment variables only (architecture, NFR-I2).
 
+**Given** sensitive routes,
+**When** traffic spikes,
+**Then** per-`userId` rate limits apply to send and login endpoints per architecture (architecture).
 
-### 6. Exigences UX (UX-DR)
+---
 
+## Epic 8: Cache, Freshness & Observability (V2)
 
-| Statut | Détail                                                                                                                                                       |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OK     | UX-DR1–UX-DR23 couverts par les stories des epics 1–6 (shell, thèmes, facture, PDF, listes vides, accessibilité, etc.), comme indiqué dans la liste d’epics. |
+Operators gain structured logs and a monitoring entry point; users benefit from cached lists/dashboard with correct invalidation across instances.
 
+### Story 8.1: Structured JSON logging with correlation id
 
-**Verdict :** prêt pour la mise en œuvre (sous réserve des choix produit à trancher en cours de dev : matrice de statuts facture, champs légaux V1, Prisma vs TypeORM, CORS direct vs BFF).
+As an operator,
+I want JSON logs with severity, timestamp, service, correlation id,
+**So that** I can troubleshoot without PII/secrets leakage (NFR-O1, architecture).
+
+**Acceptance Criteria:**
+
+**Given** HTTP requests,
+**When** they complete,
+**Then** each log line includes the agreed machine-parseable fields and excludes secrets and full invoice payloads (NFR-O1, architecture PII rules).
+
+### Story 8.2: Reachable monitoring / health surface
+
+As an operator,
+I want staging and production links to health/errors/metrics,
+**So that** I can verify liveness quickly (NFR-O2).
+
+**Acceptance Criteria:**
+
+**Given** staging and production,
+**When** I follow README links or embedded health UI,
+**Then** I can see liveness and recent errors or error rate plus optional metrics placeholder (NFR-O2).
+
+### Story 8.3: Redis cache-aside for invoice lists and dashboard with invalidation
+
+As an authenticated user,
+I want fast lists and dashboard after writes stay correct,
+**So that** FR43 and NFR-C1/C2 are satisfied (FR43, NFR-C1, NFR-C2, architecture caching table).
+
+**Acceptance Criteria:**
+
+**Given** invoice mutations affecting aggregates,
+**When** writes succeed,
+**Then** affected cache keys for that user’s lists/dashboard/detail (per stable-band rules) are invalidated or updated before response completes (FR43, NFR-C1, architecture).
+
+**Given** draft invoices,
+**When** cached,
+**Then** no long-lived financial snapshot cache is used (architecture).
+
+**Given** multiple app instances,
+**When** reads use Redis,
+**Then** configuration is shared-cache safe (NFR-C2).
+
+### Story 8.4: V2 CI/CD, release notes, and rollback/runbook updates
+
+As a team member,
+I want green pipelines and documented ops for V2 features,
+**So that** staging/production stay reachable and traceable (NFR-O3, NFR-G1, NFR-G2).
+
+**Acceptance Criteria:**
+
+**Given** V2 changes (email, Redis, monitoring),
+**When** CI runs on default branch,
+**Then** lint/format/test/build/Docker steps remain green or waivers are documented (NFR-O3).
+
+**Given** release time,
+**When** we ship V2,
+**Then** issues/PRs trace to FR32+ and a tagged release with release notes exists; rollback/feature-flag notes cover email/cache failures (NFR-G1, NFR-G2).
